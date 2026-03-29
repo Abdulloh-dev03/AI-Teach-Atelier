@@ -1,0 +1,59 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Scholar AI Backend",
+  "main": "src/index.js",
+  "type": "module",
+  "imports": {
+    "#src/*": "./src/*",
+    "#config/*": "./src/config/*",
+    "#controllers/*": "./src/controllers/*",
+    "#models/*": "./src/models/*",
+    "#routes/*": "./src/routes/*",
+    "#services/*": "./src/services/*",
+    "#utils/*": "./src/utils/*",
+    "#lib/*": "./src/lib/*",
+    "#validations/*": "./src/validations/*",
+    "#middleware/*": "./src/middleware/*",
+    "#types/*": "./src/types/*"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@huggingface/inference": "^4.13.15",
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.5.0",
+    "bcrypt": "^6.0.0",
+    "bullmq": "^5.70.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "execa": "^9.6.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "typescript": "^5.9.3",
+    "winston": "^3.19.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^22.19.15",
+    "prisma": "^7.5.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0"
+  }
+}

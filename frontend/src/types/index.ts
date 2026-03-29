@@ -1,0 +1,21 @@
+// Map Markdown language strings to actual file extensions
+export const extensionMap: Record<string, string> = {
+  javascript: "js",
+  js: "js",
+  typescript: "ts",
+  ts: "ts",
+  python: "py",
+  py: "py",
+  html: "html",
+  css: "css",
+  scss: "scss",
+  json: "json",
+  rust: "rs",
+  go: "go",
+  java: "java",
+  cpp: "cpp",
+  c: "c",
+  sql: "sql",
+  bash: "sh",
+  shell: "sh",
+};
