@@ -2,25 +2,58 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Scholar AI Backend",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "type": "module",
   "imports": {
-    "#src/*": "./src/*",
-    "#config/*": "./src/config/*",
-    "#controllers/*": "./src/controllers/*",
-    "#models/*": "./src/models/*",
-    "#routes/*": "./src/routes/*",
-    "#services/*": "./src/services/*",
-    "#utils/*": "./src/utils/*",
-    "#lib/*": "./src/lib/*",
-    "#validations/*": "./src/validations/*",
-    "#middleware/*": "./src/middleware/*",
-    "#types/*": "./src/types/*"
+    "#src/*": {
+      "production": "./dist/*",
+      "default": "./src/*"
+    },
+    "#config/*": {
+      "production": "./dist/config/*",
+      "default": "./src/config/*"
+    },
+    "#controllers/*": {
+      "production": "./dist/controllers/*",
+      "default": "./src/controllers/*"
+    },
+    "#models/*": {
+      "production": "./dist/models/*",
+      "default": "./src/models/*"
+    },
+    "#routes/*": {
+      "production": "./dist/routes/*",
+      "default": "./src/routes/*"
+    },
+    "#services/*": {
+      "production": "./dist/services/*",
+      "default": "./src/services/*"
+    },
+    "#utils/*": {
+      "production": "./dist/utils/*",
+      "default": "./src/utils/*"
+    },
+    "#lib/*": {
+      "production": "./dist/lib/*",
+      "default": "./src/lib/*"
+    },
+    "#validations/*": {
+      "production": "./dist/validations/*",
+      "default": "./src/validations/*"
+    },
+    "#middleware/*": {
+      "production": "./dist/middleware/*",
+      "default": "./src/middleware/*"
+    },
+    "#types/*": {
+      "production": "./dist/types/*",
+      "default": "./src/types/*"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node --conditions=production dist/index.js"
   },
   "keywords": [],
   "author": "",
