@@ -208,6 +208,101 @@ const extractText = (
   return text;
 };
 
+/**
+ * STRICT validation for generated test cases.
+ * Returns the validated problem if successful, or null if it fails strict criteria.
+ */
+const validateGeneratedProblem = (
+  problem: GeneratedProblem,
+): GeneratedProblem | null => {
+  const { title, description, testCases } = problem;
+  const validTestCases: GeneratedProblem["testCases"] = [];
+  const inputToOutput = new Map<string, string>();
+
+  logger.info(`Validating generated problem: "${title}"`);
+
+  for (const tc of testCases) {
+    let rejectionReason = "";
+
+    // 1. Basic Validation (Strict)
+    if (!tc.input || typeof tc.input !== "string") {
+      rejectionReason = "Input must be a non-empty string";
+    } else if (typeof tc.expected !== "string") {
+      rejectionReason = "Expected must be a string";
+    } else if (tc.expected.length > 10000) {
+      rejectionReason = "Expected output length exceeds 10k limit";
+    }
+
+    // 2. Consistency Check (Strict)
+    if (!rejectionReason) {
+      const existingOutput = inputToOutput.get(tc.input);
+      if (existingOutput !== undefined && existingOutput !== tc.expected) {
+        rejectionReason = `Inconsistent output for identical input: "${tc.input}"`;
+      }
+    }
+
+    if (rejectionReason) {
+      logger.warn(`Test case rejected: ${rejectionReason}`, {
+        input: tc.input,
+        expected: tc.expected,
+      });
+      continue;
+    }
+
+    // 3. Soft Heuristics (Warnings Only)
+    const lowerTitle = title.toLowerCase();
+    const lowerDesc = description.toLowerCase();
+
+    // Identity check warning
+    if (tc.input === tc.expected) {
+      const keywords = ["reverse", "sort", "change", "modify", "remove"];
+      if (keywords.some((k) => lowerTitle.includes(k) || lowerDesc.includes(k))) {
+        logger.info(
+          `Soft Warning: Input matches output for transformation problem`,
+          { input: tc.input },
+        );
+      }
+    }
+
+    // Keyword heuristic warning
+    if (lowerTitle.includes("reverse") || lowerDesc.includes("reverse")) {
+      const reversed = tc.input.split("").reverse().join("");
+      if (tc.expected !== reversed && tc.input.length > 1) {
+        logger.info(`Soft Warning: Expected output does not match simple reverse`, {
+          input: tc.input,
+          expected: tc.expected,
+        });
+      }
+    }
+
+    validTestCases.push(tc);
+    inputToOutput.set(tc.input, tc.expected);
+  }
+
+  const invalidCount = testCases.length - validTestCases.length;
+
+  // 4. Enforcement Logic
+  if (invalidCount > 2) {
+    logger.error(
+      `Validation failed: Too many invalid test cases (${invalidCount}/7)`,
+    );
+    return null;
+  }
+
+  if (validTestCases.length < 7) {
+    logger.error(
+      `Validation failed: Insufficient valid test cases (${validTestCases.length}/7)`,
+    );
+    return null;
+  }
+
+  // Ensure we return exactly 7 valid ones
+  return {
+    ...problem,
+    testCases: validTestCases.slice(0, 7),
+  };
+};
+
 // ─── Problem generation ───────────────────────────────────────────────────────
 
 export const generateProblemFromAI = async (
@@ -266,21 +361,30 @@ export const generateProblemFromAI = async (
       !parsed.title ||
       !parsed.slug ||
       !parsed.description ||
-      !Array.isArray(parsed.testCases) ||
-      parsed.testCases.length !== 7
+      !Array.isArray(parsed.testCases)
     ) {
       logger.warn(
-        `[generateProblem] Shape check failed on attempt ${attempt}`,
+        `[generateProblem] Basic shape check failed on attempt ${attempt}`,
         { title: parsed.title, testCaseCount: parsed.testCases?.length },
       );
       lastError = new Error("AI response did not match expected shape");
       continue;
     }
 
+    // Strict Validation Layer
+    const validated = validateGeneratedProblem(parsed);
+    if (!validated) {
+      logger.warn(
+        `[generateProblem] Validation failed on attempt ${attempt}. Retrying...`,
+      );
+      lastError = new Error("Generated test cases failed validation");
+      continue;
+    }
+
     logger.info(
-      `Problem generated successfully: "${parsed.title}" (attempt ${attempt})`,
+      `Problem generated and validated successfully: "${validated.title}" (attempt ${attempt})`,
     );
-    return parsed;
+    return validated;
   }
 
   // All attempts exhausted

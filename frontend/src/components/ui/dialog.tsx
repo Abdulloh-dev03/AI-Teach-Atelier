@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
-
+import { motion } from "framer-motion" 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
@@ -38,12 +38,44 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
+      asChild
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm", 
         className
       )}
       {...props}
-    />
+    >
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        {/* 🌌 THE ANIMATED DOT GRID */}
+        <motion.div
+          initial={{ backgroundPosition: "0px 0px" }}
+          animate={{ backgroundPosition: ["0px 0px", "40px 40px"] }}
+          transition={{
+            duration: 5,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute inset-0 opacity-[0.15] pointer-events-none"
+          style={{
+            backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
+            backgroundSize: "24px 24px",
+          }}
+        />
+        
+        {/* OPTIONAL: Subtle Radial Glow following the movement */}
+        <motion.div 
+          animate={{
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--accent-rgb),0.1),transparent_70%)] pointer-events-none"
+        />
+      </motion.div>
+    </DialogPrimitive.Overlay>
   )
 }
 

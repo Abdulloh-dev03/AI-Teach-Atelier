@@ -167,6 +167,7 @@ export const submitSolution = async (
       passed: judgeResult.passed,
       total: judgeResult.total,
       runtime: judgeResult.runtimeMs,
+      results: results,
       userId,
       problemId,
     },

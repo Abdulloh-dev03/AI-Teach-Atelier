@@ -42,10 +42,6 @@ export interface GenerateProblemRequest {
     | "javascript"
     | "typescript"
     | "python"
-    | "cpp"
-    | "java"
-    | "c"
-    | "go";
   difficulty: "EASY" | "MEDIUM" | "HARD";
 }
 
@@ -90,7 +86,7 @@ export const problemApi = api.injectEndpoints({
           body,
         }),
         invalidatesTags: (result, error, arg) => [
-          { type: "Submission", id: arg.id },
+          { type: "Submission", id: "LIST" },
           { type: "Problem", id: arg.id },
         ],
       },

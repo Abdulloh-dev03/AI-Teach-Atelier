@@ -47,7 +47,13 @@ export const submissionApi = api.injectEndpoints({
         url: "/submissions",
         params: params || undefined,
       }),
-      providesTags: ["Submission"],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "Submission" as const, id })),
+              { type: "Submission", id: "LIST" },
+            ]
+          : [{ type: "Submission", id: "LIST" }],
     }),
     getSubmissionDetails: builder.query<SubmissionResponse, string>({
       query: (id) => `/submissions/${id}`,

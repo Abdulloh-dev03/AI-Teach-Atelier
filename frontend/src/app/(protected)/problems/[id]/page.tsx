@@ -147,7 +147,7 @@ export default function ProblemDetailsPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] bg-surface overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen bg-surface overflow-hidden">
       {/* LEFT PANEL: Editorial Description */}
       <aside className="w-full lg:w-105 bg-surface-container-low flex flex-col h-[50vh] lg:h-full overflow-hidden relative shadow-(--shadow-ambient)">
         <div className="p-6 pb-2 shrink-0 flex items-center justify-between">

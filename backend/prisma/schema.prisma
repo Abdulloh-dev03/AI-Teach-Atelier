@@ -100,6 +100,7 @@ model Submission {
   runtime    Int?
   memoryKb   Int?
   outputSize Int?
+  results Json?
   createdAt  DateTime         @default(now())
 
   userId    String

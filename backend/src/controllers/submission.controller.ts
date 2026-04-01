@@ -68,6 +68,7 @@ export const listSubmissions = async (req: Request, res: Response) => {
         passed: true,
         total: true,
         runtime: true,
+        results: true,
         createdAt: true,
         problem: {
           select: { id: true, title: true, slug: true, difficulty: true },

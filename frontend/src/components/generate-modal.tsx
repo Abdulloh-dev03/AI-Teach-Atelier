@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useGenerateProblemMutation } from "@/store/problemApi";
 import { Button } from "@/components/ui/button";
@@ -20,12 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Sparkles } from "lucide-react";
+import { Loader2, Plus, Sparkles, Wand2, Terminal, Layers } from "lucide-react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { cn } from "@/lib/utils";
 
 export function GenerateModal({ onClick }: { onClick?: () => void }) {
   const [open, setOpen] = useState(false);
   const [language, setLanguage] = useState<
-    "javascript" | "typescript" | "python" | "cpp" | "java" | "c" | "go"
+    "javascript" | "typescript" | "python"
   >("javascript");
   const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">(
     "EASY",
@@ -33,6 +35,17 @@ export function GenerateModal({ onClick }: { onClick?: () => void }) {
 
   const [generateProblem, { isLoading }] = useGenerateProblemMutation();
   const router = useRouter();
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (open) {
+      gsap.fromTo(
+        ".modal-animate-in",
+        { y: 20, opacity: 0, scale: 0.95 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.5, stagger: 0.1, ease: "power4.out" }
+      );
+    }
+  }, [open]);
 
   const handleGenerate = async () => {
     try {
@@ -50,83 +63,100 @@ export function GenerateModal({ onClick }: { onClick?: () => void }) {
       <DialogTrigger asChild>
         <button
           onClick={onClick}
-          className="relative w-full md:w-auto p-px rounded-xl cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200 bg-border-subtle overflow-hidden group"
+          className="relative group h-12 w-full md:w-auto px-6 rounded-2xl bg-surface-container hover:bg-surface-container-high transition-all duration-300 border border-border-subtle cursor-pointer overflow-hidden shadow-sm"
         >
-          <div className="absolute inset-0 bg-signature opacity-80 group-hover:opacity-100 transition-opacity" />
-          <span className="relative flex items-center gap-2 px-6 py-3 rounded-xl bg-background-base group-hover:bg-background-base/90 transition-colors duration-200">
-            <Sparkles className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-text-primary">Generate New</span>
-          </span>
+          <div className="absolute inset-0 bg-linear-to-r from-primary/0 via-primary/5 to-primary/0 translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          <div className="relative flex items-center justify-center gap-2.5">
+            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+            <span className="text-sm font-bold tracking-tight text-primary uppercase ">AI Forge</span>
+          </div>
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-106.25 bg-surface-card border-border-subtle text-text-primary">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            Generate AI Problem
-          </DialogTitle>
-          <DialogDescription>
-            Select a language and difficulty. Our AI will craft a unique coding
-            challenge for you.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <span className="text-sm font-medium text-right">Language</span>
-            <Select
-              value={language}
-              onValueChange={(val: any) => setLanguage(val)}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="javascript">JavaScript</SelectItem>
-                <SelectItem value="typescript">TypeScript</SelectItem>
-                <SelectItem value="python">Python</SelectItem>
-                <SelectItem value="cpp">C++</SelectItem>
-                <SelectItem value="java">Java</SelectItem>
-                <SelectItem value="c">C</SelectItem>
-                <SelectItem value="go">Go</SelectItem>
-              </SelectContent>
-            </Select>
+      <DialogContent 
+        className="sm:max-w-120 bg-surface-card/80 backdrop-blur-3xl border border-border-subtle shadow-2xl p-0 overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-primary/20 via-primary to-primary/20 shadow-[0_4px_12px_rgba(var(--primary-rgb),0.3)]" />
+        
+        <div className="p-8 space-y-8">
+          <DialogHeader className="modal-animate-in">
+            <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-4 border border-primary/10">
+              <Wand2 className="w-7 h-7 text-primary" />
+            </div>
+            <DialogTitle className="text-3xl font-extrabold tracking-tight text-primary leading-tight">
+              Create a Challenge
+            </DialogTitle>
+            <DialogDescription className="text-on-surface-variant/70 font-medium leading-relaxed">
+              Define your parameters. Our architect will construct a specialized coding inquiry tailored to your preferences.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 modal-animate-in">
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-on-surface-variant flex items-center gap-2">
+                <Terminal className="w-3 h-3" /> Runtime Language
+              </label>
+              <Select
+                value={language}
+                onValueChange={(val: any) => setLanguage(val)}
+              >
+                <SelectTrigger className="h-14 bg-surface-container-low/50 border-border-subtle rounded-2xl text-sm font-semibold hover:bg-surface-container transition-colors ring-offset-background focus:ring-1 focus:ring-primary">
+                  <SelectValue placeholder="Select Language" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-card border-border-subtle rounded-xl shadow-xl">
+                  <SelectItem value="javascript" className="py-3 font-medium transition-colors cursor-pointer">JavaScript</SelectItem>
+                  <SelectItem value="typescript" className="py-3 font-medium transition-colors cursor-pointer">TypeScript</SelectItem>
+                  <SelectItem value="python" className="py-3 font-medium transition-colors cursor-pointer">Python</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-on-surface-variant flex items-center gap-2">
+                <Layers className="w-3 h-3" /> Inquiry Complexity
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["EASY", "MEDIUM", "HARD"] as const).map((diff) => (
+                  <button
+                    key={diff}
+                    onClick={() => setDifficulty(diff)}
+                    className={cn(
+                      "h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border cursor-pointer",
+                      difficulty === diff
+                        ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                        : "bg-surface-container-low text-on-surface-variant border-border-subtle hover:border-primary/30"
+                    )}
+                  >
+                    {diff}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <span className="text-sm font-medium text-right">Difficulty</span>
-            <Select
-              value={difficulty}
-              onValueChange={(val: any) => setDifficulty(val)}
+
+          <div className="pt-4 flex items-center gap-3 modal-animate-in">
+            <Button
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              disabled={isLoading}
+              className="flex-1 h-14 rounded-2xl font-bold text-on-surface-variant hover:bg-destructive/5 hover:text-destructive transition-all"
             >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select Difficulty" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="EASY">Easy</SelectItem>
-                <SelectItem value="MEDIUM">Medium</SelectItem>
-                <SelectItem value="HARD">Hard</SelectItem>
-              </SelectContent>
-            </Select>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="flex-[1.5] h-14 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3 active:scale-95 transition-all"
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="h-5 w-5" />
+                  Generate Inquiry
+                </>
+              )}
+            </Button>
           </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-2">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleGenerate}
-            disabled={isLoading}
-            className="gap-2"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            Generate
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

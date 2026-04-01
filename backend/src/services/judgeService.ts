@@ -1,4 +1,4 @@
-import { runCode } from "#services/dockerExecutor.js";
+import { executionRouter } from "#services/executionRouter.js";
 import { isSupportedLanguage } from "#config/languages.js";
 import { WrapperService } from "#services/WrapperService.js";
 import logger from "#config/logger.js";
@@ -147,7 +147,7 @@ export const judge = async (req: JudgeRequest): Promise<SubmissionResult> => {
     (tc, index) => async (): Promise<TestCaseResult> => {
       await executionSemaphore.acquire();
       try {
-        const raw = await runCode(
+        const raw = await executionRouter(
           wrappedCode,
           tc.input,
           language,

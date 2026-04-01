@@ -5,6 +5,14 @@ import os from "os";
 import { languages } from "#config/languages.js";
 import type { ExecutionResult } from "#types/judge.js";
 
+/**
+ * NOTE:
+ * This executor is currently unused in production due to deployment constraints
+ * (Docker not supported on Render).
+ *
+ * It remains here for future scalability where container-based execution
+ * can be re-enabled.
+ */
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_TIMEOUT_MS = 5_000;
