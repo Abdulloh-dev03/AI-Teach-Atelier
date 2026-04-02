@@ -4,7 +4,7 @@ export const cookies = {
   getOptions: (): CookieOptions => ({
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: "lax",
     path: "/",
     maxAge: 1000 * 60 * 60 * 24 * 7,
   }),
