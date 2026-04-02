@@ -3,9 +3,10 @@ import type { Response, Request, CookieOptions } from 'express';
 export const cookies = {
   getOptions: (): CookieOptions => ({
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 1000 * 60 * 60 * 24 * 7 //  1 week
+    secure: true,
+    sameSite: "none",
+    path: "/",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   }),
 
   set: (
