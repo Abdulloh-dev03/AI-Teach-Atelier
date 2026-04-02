@@ -1,17 +1,17 @@
-import type { NextConfig } from 'next'
- 
+import type { NextConfig } from "next";
+
 const nextConfig: NextConfig = {
-  turbopack:{
-    root:"."
+  turbopack: {
+    root: ".",
   },
- async rewrites() {
+  async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'https://ai-teach-atelier.onrender.com/:path*',
+        source: "/api/:path*",
+        destination: "https://ai-teach-atelier.onrender.com/api/:path*",
       },
-    ]
+    ];
   },
-}
- 
-export default nextConfig
+};
+
+export default nextConfig;
