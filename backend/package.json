@@ -53,7 +53,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node --conditions=production dist/index.js"
+    "start": "NODE_ENV=production node --conditions=production dist/index.js"
   },
   "keywords": [],
   "author": "",
