@@ -516,7 +516,7 @@ export default function NotFound() {
                   }}
                 >
                   <p className="text-sm">Error code: 404</p>
-                  <p className="mt-1 text-sm rotate-[1deg]">
+                  <p className="mt-1 text-sm rotate-1">
                     try the front door instead
                   </p>
                 </div>
