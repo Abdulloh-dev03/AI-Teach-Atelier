@@ -1,19 +1,32 @@
 import type { NextConfig } from "next";
 
+const backendOrigin = (
+  process.env.BACKEND_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:4000"
+)
+  .replace(/\/api\/?$/, "")
+  .replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
   turbopack: {
-    root: ".",
+    root: __dirname,
   },
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:4000/api/:path*",
+        destination: `${backendOrigin}/api/:path*`,
       },
     ];
   },
   images: {
-    domains: ["res.cloudinary.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+    ],
   },
 };
 
