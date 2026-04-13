@@ -52,7 +52,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "NODE_ENV=production node --conditions=production dist/index.js"
   },
   "keywords": [],

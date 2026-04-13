@@ -26,6 +26,12 @@ export type FeedbackParams = {
   total: number;
 };
 
+export type AIFeedbackResult = {
+  analysis: string;
+  suggestions: string;
+  complexity: string;
+};
+
 export type MessageContent =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };

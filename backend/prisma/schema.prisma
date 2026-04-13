@@ -30,6 +30,7 @@ model Problem {
   requestedById String?
   slug          String       @unique
   requestedBy   User?        @relation("RequestedProblems", fields: [requestedById], references: [id])
+  testCases     TestCase[]
   submissions   Submission[]
 }
 
@@ -49,6 +50,25 @@ model Submission {
   results    Json?
   problem    Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
   user       User             @relation(fields: [userId], references: [id])
+  aiFeedback AIFeedback?
+}
+
+model TestCase {
+  id        String  @id @default(uuid())
+  input     String
+  expected  String
+  isHidden  Boolean @default(true)
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model AIFeedback {
+  id           String     @id @default(uuid())
+  analysis     String
+  suggestions  String?
+  complexity   String?
+  submissionId String     @unique
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
 
 model ChatSession {
