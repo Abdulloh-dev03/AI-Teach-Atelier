@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,84 +6,33 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── USERS ───────────────────────────────────────────
 model User {
-  id           String    @id @default(uuid())
-  name         String    @unique
-  email        String    @unique
-  password     String
-  createdAt    DateTime  @default(now())
-
-  elo          Int       @default(1000)
-  streak       Int       @default(0)
-  lastSolvedAt DateTime?
-
-  // skill profile — AI reads this to personalize problems
-  skillProfile  SkillProfile?
-
-  submissions       Submission[]
-  requestedProblems Problem[]      @relation("RequestedProblems")
-  posts             CommunityPost[]
-  beatAttempts      BeatAttempt[]
-  notifications     Notification[]
-  battlesAsA        Battle[]       @relation("BattleUserA")
-  battlesAsB        Battle[]       @relation("BattleUserB")
+  id                String        @id @default(uuid())
+  name              String        @unique
+  email             String        @unique
+  password          String
+  createdAt         DateTime      @default(now())
+  profilePic        String?
   chatSessions      ChatSession[]
+  requestedProblems Problem[]     @relation("RequestedProblems")
+  submissions       Submission[]
 }
 
-// ─── SKILL PROFILE ───────────────────────────────────
-// AI uses this to understand what the user knows
-model SkillProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
-
-  // topics the user has been tested on + scores (stored as JSON)
-  // e.g. { "arrays": 85, "trees": 40, "dp": 20 }
-  topicScores   Json @default("{}")
-
-  // language they use most
-  preferredLang String @default("javascript")
-
-  // overall level inferred by AI
-  level         SkillLevel @default(BEGINNER)
-
-  updatedAt DateTime @updatedAt
-}
-
-// ─── PROBLEMS ────────────────────────────────────────
 model Problem {
-  id            String     @id @default(uuid())
+  id            String       @id @default(uuid())
   title         String
-  slug          String     @unique
   description   String
   difficulty    Difficulty
-  language      String
+  createdAt     DateTime     @default(now())
+  generatedByAI Boolean      @default(false)
   topic         String?
-  generatedByAI Boolean    @default(false)
-  createdAt     DateTime   @default(now())
-
+  language      String
   requestedById String?
-  requestedBy   User?      @relation("RequestedProblems", fields: [requestedById], references: [id])
-
-  testCases     TestCase[]
+  slug          String       @unique
+  requestedBy   User?        @relation("RequestedProblems", fields: [requestedById], references: [id])
   submissions   Submission[]
-  communityPost CommunityPost?
-  battles       Battle[]
 }
 
-// ─── TEST CASES ──────────────────────────────────────
-model TestCase {
-  id        String  @id @default(uuid())
-  input     String
-  expected  String
-  isHidden  Boolean @default(true)
-
-  problemId String
-  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
-}
-
-// ─── SUBMISSIONS ─────────────────────────────────────
 model Submission {
   id         String           @id @default(uuid())
   code       String
@@ -98,141 +41,40 @@ model Submission {
   passed     Int
   total      Int
   runtime    Int?
+  createdAt  DateTime         @default(now())
+  userId     String
+  problemId  String
   memoryKb   Int?
   outputSize Int?
-  results Json?
-  createdAt  DateTime         @default(now())
-
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
-
-  problemId String
-  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  battleId  String?
-  battle    Battle? @relation(fields: [battleId], references: [id])
-
-  aiFeedback AIFeedback?
+  results    Json?
+  problem    Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id])
 }
 
-// ─── AI FEEDBACK ─────────────────────────────────────
-model AIFeedback {
-  id           String     @id @default(uuid())
-  analysis     String
-  suggestions  String?
-  complexity   String?
-
-  submissionId String     @unique
-  submission   Submission @relation(fields: [submissionId], references: [id])
-}
-
-// ─── CHAT SESSIONS ───────────────────────────────────
-// Stores full conversation history per user session
 model ChatSession {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  title     String?  // auto-generated from first message
-
+  id        String        @id @default(uuid())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  title     String?
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-
   messages  ChatMessage[]
+  user      User          @relation(fields: [userId], references: [id])
 }
 
 model ChatMessage {
   id        String      @id @default(uuid())
   createdAt DateTime    @default(now())
-  role      MessageRole // USER or ASSISTANT
+  role      MessageRole
   content   String
-
   sessionId String
+  imageUrl  String?
   session   ChatSession @relation(fields: [sessionId], references: [id])
 }
 
-// ─── COMMUNITY POSTS ─────────────────────────────────
-model CommunityPost {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
-
-  problemId String  @unique
-  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  bestTime  Int     // seconds to solve
-  bestScore Int     // % of test cases passed
-
-  beatAttempts BeatAttempt[]
-}
-
-// ─── BEAT ATTEMPTS ───────────────────────────────────
-model BeatAttempt {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  postId String
-  post   CommunityPost @relation(fields: [postId], references: [id])
-
-  timeTaken    Int     // seconds
-  score        Int     // % passed
-  beaten       Boolean
-  submissionId String
-}
-
-// ─── NOTIFICATIONS ───────────────────────────────────
-model Notification {
-  id        String           @id @default(uuid())
-  createdAt DateTime         @default(now())
-  read      Boolean          @default(false)
-  type      NotificationType
-  message   String
-
-  userId   String
-  user     User   @relation(fields: [userId], references: [id])
-
-  postId   String?
-  battleId String?
-}
-
-// ─── BATTLES ─────────────────────────────────────────
-model Battle {
-  id         String       @id @default(uuid())
-  createdAt  DateTime     @default(now())
-  status     BattleStatus @default(WAITING)
-  timeLimit  Int          @default(30) // minutes
-  difficulty Difficulty
-
-  userAId  String
-  userA    User   @relation("BattleUserA", fields: [userAId], references: [id])
-  userBId  String?
-  userB    User?  @relation("BattleUserB", fields: [userBId], references: [id])
-
-  problemId String?
-  problem   Problem? @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  winnerId  String?
-  startedAt DateTime?
-  endedAt   DateTime?
-
-  submissions Submission[]
-}
-
-// ─── ENUMS ───────────────────────────────────────────
 enum Difficulty {
   EASY
   MEDIUM
   HARD
-}
-
-enum SkillLevel {
-  BEGINNER
-  INTERMEDIATE
-  ADVANCED
 }
 
 enum SubmissionStatus {
@@ -244,19 +86,6 @@ enum SubmissionStatus {
   OUTPUT_LIMIT_EXCEEDED
   MEMORY_LIMIT_EXCEEDED
   INTERNAL_ERROR
-}
-
-enum NotificationType {
-  SCORE_BEATEN
-  BATTLE_INVITE
-  BATTLE_RESULT
-}
-
-enum BattleStatus {
-  WAITING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
 }
 
 enum MessageRole {

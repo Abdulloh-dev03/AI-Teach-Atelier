@@ -8,13 +8,9 @@ export type GeneratedProblem = {
   title: string;
   slug: string;
   description: string;
+  /** Hidden reference solution — never exposed to users, stored internally only. */
+  referenceSolution: string;
   testCases: GeneratedTestCase[];
-};
-
-export type AIFeedbackResult = {
-  analysis: string;
-  suggestions: string;
-  complexity: string;
 };
 
 export type GenerateProblemParams = {
@@ -28,4 +24,13 @@ export type FeedbackParams = {
   problemDescription: string;
   passed: number;
   total: number;
+};
+
+export type MessageContent =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export type ChatMessageType = {
+  role: "user" | "assistant";
+  content: MessageContent[];
 };

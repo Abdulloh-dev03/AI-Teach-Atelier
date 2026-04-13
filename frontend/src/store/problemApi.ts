@@ -98,6 +98,13 @@ export const problemApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Problem", "User"],
     }),
+    deleteAllProblems: builder.mutation<void, void>({
+      query: () => ({
+        url: "/problems/delete-all",
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Problem", "User"],
+    }),
     runCode: builder.mutation<any, RunCodeRequest>({
       query: (body) => ({
         url: "/run", // Corrected endpoint as per executeRoutes.ts
@@ -114,5 +121,6 @@ export const {
   useGetProblemByIdQuery,
   useSubmitSolutionMutation,
   useDeleteProblemMutation,
+  useDeleteAllProblemsMutation,
   useRunCodeMutation,
 } = problemApi;

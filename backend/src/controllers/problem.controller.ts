@@ -60,6 +60,11 @@ export const generateProblem = async (
         error: "AI provider returned an unexpected response. Please try again.",
       });
     }
+    if (e instanceof Error && e.message === "Generated test cases failed validation") {
+      return res.status(502).json({
+        error: "AI failed to generate a valid problem. This usually happens when the requirements are too complex. Please try again or slightly change your prompt.",
+      });
+    }
     logger.error("generateProblem error", e);
     next(e);
   }
@@ -160,6 +165,23 @@ export const deleteProblem = async (
     return res.status(200).json({message:'Problem deleted successfully'})
   } catch (error) {
     logger.error("deleteProblem error", error);
+    next(error);
+  }
+};
+
+export const deleteAllProblems = async (
+  req:AuthRequest,
+  res:Response,
+  next:NextFunction
+) => {
+  try {
+    const userId = req.user!.id;
+    await prisma.problem.deleteMany({
+      where:{requestedById:userId}
+    })
+    return res.status(200).json({message:'All problems deleted successfully'})
+  } catch (error) {
+    logger.error("deleteAllProblems error", error);
     next(error);
   }
 }

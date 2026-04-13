@@ -1,9 +1,12 @@
 export type MessageRole = "user" | "assistant";
 
 export interface Message {
+  id?: string;
   role: MessageRole;
   content: string;
+  createdAt?: string;
   timestamp: string;
+  imageUrl?: string;
   code?: string;
   footer?: string;
 }

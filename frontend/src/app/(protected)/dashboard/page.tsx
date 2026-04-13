@@ -7,7 +7,6 @@ import { GenerateModal } from "@/components/generate-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   MessageSquare, 
-  Sparkles, 
   BookOpen, 
   ArrowRight,
   Clock,
@@ -50,22 +49,6 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Test My Skills Card */}
-        <div className="bg-surface-card rounded-4xl p-8 flex flex-col hover:-translate-y-1 hover:shadow-(--shadow-ambient) transition-all duration-500 group">
-          <div className="w-12 h-12 bg-surface-elevated rounded-2xl flex items-center justify-center mb-6 shadow-(--shadow-ambient) group-hover:bg-accent/10 transition-colors">
-            <Sparkles className="w-5 h-5 text-accent" />
-          </div>
-          <h3 className="text-2xl font-bold text-text-primary mb-3">Test My Skills</h3>
-          <p className="text-sm text-text-secondary leading-relaxed mb-8 flex-1 opacity-80">
-             Dynamic assessments that adapt to your knowledge gaps. No multiple choice—only deep intellectual challenges.
-          </p>
-          <Link href="/battle">
-             <Button variant="ghost" className="p-0 h-auto hover:bg-transparent text-accent font-bold group/btn">
-               Start Assessment <ChevronRight className="ml-1 w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-             </Button>
-          </Link>
-        </div>
-
         {/* My Problems / Vault Card */}
         <div className="bg-signature rounded-4xl p-8 flex flex-col text-white hover:shadow-(--shadow-ambient-elevated) transition-all duration-500 group">
           <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6 border-none ring-1 ring-white/10">
@@ -91,7 +74,6 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center gap-3">
              <h2 className="text-2xl font-bold text-text-primary tracking-tight">Recent Sessions</h2>
-             <span className="text-[11px] font-bold uppercase tracking-widest text-text-secondary bg-surface-card px-3 py-1 rounded-full shadow-sm">Last 72 hours</span>
            </div>
            <div className="shrink-0">
              <GenerateModal />

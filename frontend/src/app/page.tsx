@@ -5,7 +5,6 @@ import {
   BrainCircuit,
   Zap,
   ShieldCheck,
-  ChevronRight,
   ArrowRight,
 } from "lucide-react";
 
@@ -43,7 +42,7 @@ export default function LandingPage() {
         </div>
 
         {/* Hero Section - Display Typography */}
-        <h1 className="text-[56px] md:text-[84px] font-bold tracking-[-0.04em] mb-10 text-primary leading-[0.95] max-w-4xl">
+        <h1 className="text-[56px] md:text-[84px] italic font-serif tracking-[-0.04em] mb-10 text-primary leading-[0.95] max-w-4xl">
           Master logic in your <br />
           <span className="italic font-serif opacity-90">personal atelier.</span>
         </h1>

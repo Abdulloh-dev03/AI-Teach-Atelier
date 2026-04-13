@@ -14,6 +14,9 @@ const sourceCodePro = Source_Code_Pro({
 export const metadata: Metadata = {
   title: "AI Teach | The Digital Atelier",
   description: "High-fidelity pedagogical models and algorithm training.",
+  icons:{
+    icon: "/favicon.svg",
+  }
 };
 
 export default function RootLayout({

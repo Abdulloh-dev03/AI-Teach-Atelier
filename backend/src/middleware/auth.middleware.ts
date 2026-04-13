@@ -48,6 +48,7 @@ export const auth = async (
         id: true,
         email: true,
         name: true,
+        profilePic: true,
         createdAt: true,
       },
     });

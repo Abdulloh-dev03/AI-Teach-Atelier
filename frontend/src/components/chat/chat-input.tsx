@@ -1,27 +1,24 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  Paperclip, 
-  ArrowUp, 
-  Command, 
-  ChevronDown 
-} from "lucide-react";
+import { Paperclip, ArrowUp, ChevronDown, X, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
+import { useUploadImageMutation } from "@/store/cloudinaryApi";
 
 interface ChatInputProps {
   inputValue: string;
   onInputChangeAction: (value: string) => void;
   activeModel: string;
   onModelChangeAction: (model: string) => void;
-  onSendMessageAction: () => void;
+  onSendMessageAction: (imageUrl?: string) => void;
 }
 
 export function ChatInput({
@@ -32,102 +29,184 @@ export function ChatInput({
   onSendMessageAction,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [uploadImage, { isLoading: isUploading }] = useUploadImageMutation();
+
   const adjustHeight = useAutoResizeTextarea(textareaRef);
 
-  // Adjust height when input value changes
   useEffect(() => {
     adjustHeight();
   }, [inputValue, adjustHeight]);
 
+  const handleImageSelect = async (file: File) => {
+    try {
+      const url = await uploadImage(file).unwrap();
+      setImageUrl(url);
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+  };
+
+  const removeImage = () => {
+    setImageUrl(null);
+  };
+
+  const handleSend = () => {
+    onSendMessageAction(imageUrl || undefined);
+    setImageUrl(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSendMessageAction();
+      handleSend();
     }
   };
 
   return (
-    <div className="relative bg-background-base my-2 border-border-subtle">
-      <div className="max-w-3xl mx-auto relative group">
-        <div className="relative bg-surface-card border border-border-subtle rounded-[28px] shadow-2xl transition-all duration-300 focus-within:ring-2 ring-accent/10">
-          <div className="flex flex-col gap-2 p-4">
-            <div className="flex items-center gap-2 px-2">
-               <DropdownMenu>
+    <div className="relative bg-background-base my-3 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-surface-card border border-border-subtle rounded-3xl p-2 shadow-sm">
+          {/* Image Preview / Loading Area */}
+          {(imageUrl || isUploading) && (
+            <div className="p-2 pb-0 flex">
+              <div className="relative group">
+                {isUploading ? (
+                  // 1. LOADING SQUARE
+                  <div className="w-28 h-28 aspect-square rounded-2xl border border-dashed border-border-subtle bg-accent/5 flex flex-col items-center justify-center gap-2 animate-pulse">
+                    <Loader2 className="w-6 h-6 animate-spin text-accent" />
+                    <span className="text-[10px] font-medium text-text-secondary">
+                      Uploading...
+                    </span>
+                  </div>
+                ) : (
+                  // 2. SQUARE IMAGE PREVIEW
+                  <>
+                    <div
+                      className="w-28 h-28 aspect-square overflow-hidden rounded-2xl border border-border-subtle shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+                      onClick={() => setIsPreviewOpen(true)}
+                    >
+                      <img
+                        src={imageUrl!}
+                        alt="preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage();
+                      }}
+                      className="absolute -top-1.5 -right-1.5 bg-background-base border border-border-subtle text-text-primary rounded-full p-1 shadow-md hover:bg-surface-card transition-colors z-10"
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2 p-1">
+            {/* Paperclip */}
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-2xl shrink-0 dark:bg-transparent dark:hover:bg-transparent text-text-secondary hover:text-text-primary cursor-pointer"
+            >
+              <Paperclip className="w-5 h-5" />
+            </Button>
+
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => onInputChangeAction(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Message Friday AI..."
+              className="flex-1 bg-transparent border-none focus:ring-0 outline-none resize-none max-h-40 text-base py-2"
+              rows={1}
+            />
+
+            {/* Model + Send - Right */}
+            <div className="flex items-center gap-2 shrink-0 pb-0.5">
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    className="h-7 px-3 text-[10px] font-bold uppercase tracking-[0.2em] rounded-xl border border-border-subtle/50 cursor-pointer"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-xl text-[12px] italic font-serif px-2 text-secondary cursor-pointer"
                   >
                     {activeModel}
                     <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48 bg-surface-card border-border-subtle">
-                  <DropdownMenuItem 
-                    onClick={() => onModelChangeAction("qwen")}
-                    className="text-[10px] font-black uppercase tracking-[0.2em] transition-colors focus:bg-accent focus:text-white cursor-pointer rounded-lg p-2.5"
-                  >
-                    Qwen 2.5
+                <DropdownMenuContent align="end" className="rounded-xl bg-[#fcf9f2] dark:bg-[#14181d]">
+                  <DropdownMenuItem onClick={() => onModelChangeAction("kimi")} className="hover:text-white cursor-pointer dark:hover:text-black">
+                    Kimi K2.5
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => onModelChangeAction("llama")}
-                    className="text-[10px] font-black uppercase tracking-[0.2em] transition-colors focus:bg-accent focus:text-white cursor-pointer rounded-lg p-2.5"
-                  >
-                    Llama 3
+                  <DropdownMenuItem onClick={() => onModelChangeAction("qwen")} className="hover:text-white cursor-pointer dark:hover:text-black">
+                    Qwen 3.5
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => onModelChangeAction("openai")}
-                    className="text-[10px] font-black uppercase tracking-[0.2em] transition-colors focus:bg-accent focus:text-white cursor-pointer rounded-lg p-2.5"
+                  <DropdownMenuItem
+                    onClick={() => onModelChangeAction("gemma")} className="hover:text-white cursor-pointer dark:hover:text-black"
                   >
-                    GPT-4o
+                    Gemma
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <span className="h-4 w-px bg-border-subtle" />
-              <span className="text-[10px] font-bold text-text-secondary/40 uppercase tracking-widest">Context Ready</span>
-            </div>
 
-            <div className="flex items-end gap-3 px-2">
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => onInputChangeAction(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Message Friday AI..."
-                rows={1}
-                className="flex-1 bg-transparent outline-none text-[16px] placeholder:text-text-secondary/40 resize-none max-h-62.5 py-2 leading-relaxed custom-scrollbar"
-                style={{ minHeight: "44px" }}
-              />
-              
-              <div className="flex items-center gap-2 pb-1.5">
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-text-secondary hover:text-text-primary hover:bg-accent/5 transition-colors">
-                  <Paperclip className="w-5 h-5" />
-                </Button>
-                <Button 
-                  size="icon" 
-                  onClick={onSendMessageAction}
-                  className="h-10 w-10 rounded-2xl cursor-pointer"
-                >
-                  <ArrowUp className="w-5 h-5" />
-                </Button>
-              </div>
+              <Button
+                onClick={handleSend}
+                disabled={isUploading || !inputValue.trim()}
+                className="h-8 w-8 rounded-xl bg-accent hover:bg-accent/90 p-0"
+              >
+                <ArrowUp className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Status indicators */}
-        <div className="mt-4 flex items-center justify-between px-6">
-          <div className="flex items-center gap-2 group/status">
-            <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_rgba(var(--accent),0.5)]" />
-            <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest group-hover/status:text-text-secondary transition-colors">Systems Optimal</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-[10px] font-mono text-text-secondary/40">
-              <Command className="w-3 h-3" />
-              <span>+ ENTER TO SEND</span>
-            </div>
-          </div>
+        <div className="text-[10px] text-center text-text-secondary/50 mt-2">
+          Friday can make mistakes. Check important info.
         </div>
       </div>
+
+      {/* Full Image Preview Modal */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] p-0 bg-transparent border-none flex items-center justify-center outline-none">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img
+              src={imageUrl || ""}
+              alt="Full preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            />
+            <DialogClose asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute -top-12 right-0 md:-right-12 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md cursor-pointer"
+              >
+                <X size={20} />
+              </Button>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) =>
+          e.target.files?.[0] && handleImageSelect(e.target.files[0])
+        }
+      />
     </div>
   );
 }

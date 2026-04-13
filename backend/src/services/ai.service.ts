@@ -7,9 +7,12 @@ import type {
   GenerateProblemParams,
   FeedbackParams,
 } from "#types/index.js";
+import { WrapperService } from "./WrapperService.js";
+import { executionRouter } from "./executionRouter.js";
+import { validateGeneratedProblem } from "#validations/ai.validation.js";
 
-// ─── Client ───────────────────────────────────────────────────────────────────
-// Single InferenceClient instance reused across all calls
+// Simple in-memory set to avoid generating duplicate titles in the same server session
+const generatedTitles = new Set<string>();
 
 const getClient = (): InferenceClient => {
   const token = process.env.HF_TOKEN;
@@ -17,57 +20,107 @@ const getClient = (): InferenceClient => {
   return new InferenceClient(token);
 };
 
-// ─── Models ───────────────────────────────────────────────────────────────────
-//
-// Qwen2.5-72B  — strong instruction following + reliable JSON output
-//                used for problem generation where structure is critical
-//
-// Mistral-7B   — lighter and faster, great for explanations and feedback
-//                used for AI feedback where speed matters more than JSON
-//
-// To force the cheapest provider append ':cheapest' to the model id e.g:
-//   'Qwen/Qwen2.5-72B-Instruct:cheapest'
-// To pin a specific provider append its name e.g:
-//   'Qwen/Qwen2.5-72B-Instruct:sambanova'
-
 const MODELS = {
   generation: "Qwen/Qwen2.5-72B-Instruct",
   feedback: "mistralai/Mistral-7B-Instruct-v0.3",
 } as const;
+
+/**
+ * Safely executes the referenceSolution using the existing execution infrastructure
+ */
+async function executeReferenceSolution(
+  referenceSolution: string,
+  input: string,
+  language: string,
+): Promise<string> {
+  const wrappedCode = WrapperService.wrapCode(
+    referenceSolution,
+    language as any,
+  );
+
+  const result = await executionRouter(
+    wrappedCode,
+    input,
+    language,
+    3000, 
+    128,
+    1024 * 1024, 
+  );
+
+  if (result.exitCode !== 0 || result.timedOut || result.stderr) {
+    throw new Error(
+      `Reference solution execution failed: ${result.stderr || "Unknown error"}`,
+    );
+  }
+
+  return result.stdout.trim();
+}
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
 const buildGenerationPrompt = ({
   language,
   difficulty,
-}: GenerateProblemParams): string =>
-  `
-You are a coding challenge creator. Generate a ${difficulty} difficulty coding problem
-for the ${language} programming language.
+}: GenerateProblemParams): string => {
+  const randomSeed = Math.random().toString(36).substring(2, 15);
 
-STRICT RULES:
-- Do NOT include any solution, hint toward a solution, or pseudocode
-- Do NOT reference well-known problems (e.g. LeetCode, HackerRank problems)
-- Test case inputs and outputs must be deterministic and unambiguous
-- The problem must be solvable using only standard library features of ${language}
-- Generate exactly 7 test cases: the first 2 with isHidden=false, the remaining 5 with isHidden=true
+  return `
+You are a creative coding problem designer working for a new educational platform.
 
-Respond with ONLY a valid JSON object in this exact shape, no markdown, no explanation:
+**CRITICAL MISSION**: Generate a **completely new and original** coding problem that has never been seen before on LeetCode, Codeforces, HackerRank, AtCoder, or any other platform.
+
+━━━━━━━━━━━━━━━━━━━
+🚨 FORBIDDEN PROBLEMS — NEVER GENERATE THESE:
+━━━━━━━━━━━━━━━━━━━
+- Any palindrome related problem (Longest Palindromic Substring, Palindrome Number, etc.)
+- Two Sum, Three Sum, Add Two Numbers
+- Valid Parentheses, Merge Two Sorted Lists
+- Binary Search, Climbing Stairs, FizzBuzz, Reverse Integer
+- Any classic easy/medium LeetCode-style problems
+
+Every generation must be UNIQUE and FRESH. Never repeat titles, patterns, or ideas.
+
+Current Request:
+- Language: ${language}
+- Difficulty: ${difficulty}
+- Random Seed (use this to increase uniqueness): ${randomSeed}
+
+━━━━━━━━━━━━━━━━━━━
+CREATIVITY GUIDELINES:
+━━━━━━━━━━━━━━━━━━━
+- Think of real-world scenarios, clever string/array manipulations, simulation problems,
+  bit manipulation, greedy algorithms with interesting constraints, or math-related logic.
+- Make the title interesting, descriptive, and unique.
+- Include clear input/output format and constraints in the description.
+
+━━━━━━━━━━━━━━━━━━━
+OUTPUT REQUIREMENTS — ONLY VALID JSON:
+━━━━━━━━━━━━━━━━━━━
+Return **nothing** except a single valid JSON object. 
+No thinking steps, no markdown, no code blocks, no explanations, no <think> tags.
+
 {
-  "title": "string",
-  "slug": "kebab-case-unique-slug",
-  "description": "Full problem description with input/output format and constraints",
+  "title": "Creative and unique title here",
+  "slug": "unique-kebab-case-slug",
+  "description": "Full problem statement including input format, output format, constraints, and examples",
+  "referenceSolution": "Full working ${language} code",
   "testCases": [
-    { "input": "string", "expected": "string", "isHidden": false },
-    { "input": "string", "expected": "string", "isHidden": false },
-    { "input": "string", "expected": "string", "isHidden": true },
-    { "input": "string", "expected": "string", "isHidden": true },
-    { "input": "string", "expected": "string", "isHidden": true },
-    { "input": "string", "expected": "string", "isHidden": true },
-    { "input": "string", "expected": "string", "isHidden": true }
+    {"input": "...", "expected": "...", "isHidden": false},
+    {"input": "...", "expected": "...", "isHidden": false},
+    {"input": "...", "expected": "...", "isHidden": true},
+    {"input": "...", "expected": "...", "isHidden": true},
+    {"input": "...", "expected": "...", "isHidden": true},
+    {"input": "...", "expected": "...", "isHidden": true},
+    {"input": "...", "expected": "...", "isHidden": true}
   ]
 }
+
+Exactly 7 test cases:
+- First 2 must be visible (isHidden: false)
+- Last 5 must be hidden (isHidden: true)
+All input and expected values must be strings.
 `.trim();
+};
 
 const buildFeedbackPrompt = ({
   code,
@@ -94,7 +147,7 @@ STRICT RULES:
 - DO explain complexity if relevant
 - Keep your tone encouraging and educational
 
-Respond with ONLY a valid JSON object in this exact shape, no markdown, no explanation:
+Respond with ONLY a valid JSON object:
 {
   "analysis": "What the student's approach does and where it goes wrong",
   "suggestions": "Specific hints to guide them toward the solution without giving it away",
@@ -104,30 +157,23 @@ Respond with ONLY a valid JSON object in this exact shape, no markdown, no expla
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Remove <think>...</think> chain-of-thought blocks that Qwen models
- * sometimes emit before the actual answer.
- */
 const stripThinkingBlocks = (raw: string): string =>
   raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 
-/**
- * Strip leading/trailing markdown code fences (```json ... ``` or ``` ... ```).
- * Handles fences that may appear anywhere in the string, not just at the edges.
- */
 const stripMarkdownFences = (raw: string): string =>
   raw
     .replace(/^```(?:json)?\s*/im, "")
     .replace(/\s*```\s*$/im, "")
     .trim();
 
-/**
- * Brace-matching extractor — finds the first complete {...} object in a string
- * by counting opening and closing braces. This lets us ignore any surrounding
- * prose, extra text, or partial markdown the model may have emitted.
- *
- * Returns null if no balanced JSON object is found.
- */
+const cleanCode = (code: string): string => {
+  return code
+    .replace(/^\s*\d+[:.|]\s?/gm, "")
+    .replace(/^```(\w+)?\n/i, "")
+    .replace(/\n```$/i, "")
+    .trim();
+};
+
 const extractJSON = (raw: string): string | null => {
   let depth = 0;
   let start = -1;
@@ -135,15 +181,11 @@ const extractJSON = (raw: string): string | null => {
   for (let i = 0; i < raw.length; i++) {
     const ch = raw[i];
 
-    // Skip characters inside string literals to avoid counting braces inside them
     if (ch === '"') {
       i++;
       while (i < raw.length) {
-        if (raw[i] === "\\") {
-          i++; // skip escaped character
-        } else if (raw[i] === '"') {
-          break;
-        }
+        if (raw[i] === "\\") i++;
+        else if (raw[i] === '"') break;
         i++;
       }
       continue;
@@ -159,43 +201,37 @@ const extractJSON = (raw: string): string | null => {
       }
     }
   }
-
   return null;
 };
 
-/**
- * Robust JSON parser that:
- * 1. Strips <think>...</think> CoT blocks
- * 2. Strips markdown fences
- * 3. Extracts the first balanced {...} object via brace-matching
- * 4. Falls back to a plain JSON.parse on the cleaned string
- *
- * Throws only if no valid JSON object can be found at all.
- */
 const parseJSON = <T>(raw: string, context: string): T => {
-  // Stage 1: remove chain-of-thought reasoning blocks
   const noThinking = stripThinkingBlocks(raw);
-
-  // Stage 2: strip markdown fences
   const noFences = stripMarkdownFences(noThinking);
 
-  // Stage 3: try brace-matching extraction first (handles surrounding prose)
-  const extracted =
+  let extracted =
     extractJSON(noFences) ?? extractJSON(noThinking) ?? extractJSON(raw);
+
+  if (!extracted) {
+    const regexMatch = noFences.match(/(\{[\s\S]*\})/);
+    if (regexMatch) extracted = regexMatch[1];
+  }
 
   if (extracted) {
     try {
       return JSON.parse(extracted) as T;
-    } catch {
-      // extracted block was found but still not valid JSON — fall through
+    } catch (e) {
+      logger.error(`JSON parse failed after extraction in ${context}`, {
+        extractedPreview: extracted.slice(0, 500) + "...",
+      });
     }
   }
 
-  // Stage 4: last-ditch plain parse on the fully-cleaned string
   try {
     return JSON.parse(noFences) as T;
-  } catch {
-    logger.error(`Failed to parse AI JSON response in ${context}`, { raw });
+  } catch (err) {
+    logger.error(`AI returned invalid JSON in ${context}`, {
+      raw: raw.length > 3000 ? raw.slice(0, 3000) + "..." : raw,
+    });
     throw new Error(`AI returned invalid JSON (${context})`);
   }
 };
@@ -208,121 +244,22 @@ const extractText = (
   return text;
 };
 
-/**
- * STRICT validation for generated test cases.
- * Returns the validated problem if successful, or null if it fails strict criteria.
- */
-const validateGeneratedProblem = (
-  problem: GeneratedProblem,
-): GeneratedProblem | null => {
-  const { title, description, testCases } = problem;
-  const validTestCases: GeneratedProblem["testCases"] = [];
-  const inputToOutput = new Map<string, string>();
-
-  logger.info(`Validating generated problem: "${title}"`);
-
-  for (const tc of testCases) {
-    let rejectionReason = "";
-
-    // 1. Basic Validation (Strict)
-    if (!tc.input || typeof tc.input !== "string") {
-      rejectionReason = "Input must be a non-empty string";
-    } else if (typeof tc.expected !== "string") {
-      rejectionReason = "Expected must be a string";
-    } else if (tc.expected.length > 10000) {
-      rejectionReason = "Expected output length exceeds 10k limit";
-    }
-
-    // 2. Consistency Check (Strict)
-    if (!rejectionReason) {
-      const existingOutput = inputToOutput.get(tc.input);
-      if (existingOutput !== undefined && existingOutput !== tc.expected) {
-        rejectionReason = `Inconsistent output for identical input: "${tc.input}"`;
-      }
-    }
-
-    if (rejectionReason) {
-      logger.warn(`Test case rejected: ${rejectionReason}`, {
-        input: tc.input,
-        expected: tc.expected,
-      });
-      continue;
-    }
-
-    // 3. Soft Heuristics (Warnings Only)
-    const lowerTitle = title.toLowerCase();
-    const lowerDesc = description.toLowerCase();
-
-    // Identity check warning
-    if (tc.input === tc.expected) {
-      const keywords = ["reverse", "sort", "change", "modify", "remove"];
-      if (keywords.some((k) => lowerTitle.includes(k) || lowerDesc.includes(k))) {
-        logger.info(
-          `Soft Warning: Input matches output for transformation problem`,
-          { input: tc.input },
-        );
-      }
-    }
-
-    // Keyword heuristic warning
-    if (lowerTitle.includes("reverse") || lowerDesc.includes("reverse")) {
-      const reversed = tc.input.split("").reverse().join("");
-      if (tc.expected !== reversed && tc.input.length > 1) {
-        logger.info(`Soft Warning: Expected output does not match simple reverse`, {
-          input: tc.input,
-          expected: tc.expected,
-        });
-      }
-    }
-
-    validTestCases.push(tc);
-    inputToOutput.set(tc.input, tc.expected);
-  }
-
-  const invalidCount = testCases.length - validTestCases.length;
-
-  // 4. Enforcement Logic
-  if (invalidCount > 2) {
-    logger.error(
-      `Validation failed: Too many invalid test cases (${invalidCount}/7)`,
-    );
-    return null;
-  }
-
-  if (validTestCases.length < 7) {
-    logger.error(
-      `Validation failed: Insufficient valid test cases (${validTestCases.length}/7)`,
-    );
-    return null;
-  }
-
-  // Ensure we return exactly 7 valid ones
-  return {
-    ...problem,
-    testCases: validTestCases.slice(0, 7),
-  };
-};
-
-// ─── Problem generation ───────────────────────────────────────────────────────
+// ─── Main Generation Function ─────────────────────────────────────────────────
 
 export const generateProblemFromAI = async (
   params: GenerateProblemParams,
 ): Promise<GeneratedProblem> => {
   const client = getClient();
-  const MAX_ATTEMPTS = 3;
-  const RETRY_DELAY_MS = 1_000;
+  const MAX_ATTEMPTS = 4;           // Increased slightly
+  const RETRY_DELAY_MS = 1200;
 
-  logger.info(
-    `Generating ${params.difficulty} ${params.language} problem via HuggingFace`,
-  );
+  logger.info(`Generating ${params.difficulty} ${params.language} problem via HuggingFace`);
 
   let lastError: Error = new Error("Unknown error");
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     if (attempt > 1) {
-      logger.warn(
-        `[generateProblem] Retry attempt ${attempt}/${MAX_ATTEMPTS} after failure`,
-      );
+      logger.warn(`[generateProblem] Retry attempt ${attempt}/${MAX_ATTEMPTS}`);
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
     }
 
@@ -331,100 +268,121 @@ export const generateProblemFromAI = async (
       response = await client.chatCompletion({
         model: MODELS.generation,
         messages: [{ role: "user", content: buildGenerationPrompt(params) }],
-        max_tokens: 2048,
-        temperature: 0.4,
+        max_tokens: 2500,           // Increased for better quality
+        temperature: 0.4,           // Slightly higher for creativity
+        top_p: 0.92,
+        frequency_penalty: 0.8,     // Stronger anti-repetition
+        presence_penalty: 0.7,
       });
     } catch (err) {
-      logger.error(
-        `[generateProblem] HuggingFace call failed on attempt ${attempt}`,
-        err,
-      );
+      logger.error(`[generateProblem] HuggingFace call failed on attempt ${attempt}`, err);
       lastError = new Error("Failed to reach AI provider");
       continue;
     }
 
-    let parsed: GeneratedProblem;
+    let parsed: unknown;
     try {
       const raw = extractText(response);
-      parsed = parseJSON<GeneratedProblem>(raw, "generateProblem");
+      parsed = parseJSON<unknown>(raw, "generateProblem");
     } catch (err) {
-      logger.warn(
-        `[generateProblem] JSON parse failed on attempt ${attempt}`,
-        err,
-      );
+      logger.warn(`[generateProblem] JSON parse failed on attempt ${attempt}`, err);
       lastError = err instanceof Error ? err : new Error(String(err));
       continue;
     }
 
-    // Sanity check — ensure the shape matches what the DB expects
-    if (
-      !parsed.title ||
-      !parsed.slug ||
-      !parsed.description ||
-      !Array.isArray(parsed.testCases)
-    ) {
-      logger.warn(
-        `[generateProblem] Basic shape check failed on attempt ${attempt}`,
-        { title: parsed.title, testCaseCount: parsed.testCases?.length },
-      );
-      lastError = new Error("AI response did not match expected shape");
+    let validated: GeneratedProblem;
+    try {
+      validated = validateGeneratedProblem(parsed);
+    } catch (err) {
+      logger.warn(`[generateProblem] Zod validation failed on attempt ${attempt}`, err);
+      lastError = err instanceof Error ? err : new Error(String(err));
       continue;
     }
 
-    // Strict Validation Layer
-    const validated = validateGeneratedProblem(parsed);
-    if (!validated) {
-      logger.warn(
-        `[generateProblem] Validation failed on attempt ${attempt}. Retrying...`,
-      );
-      lastError = new Error("Generated test cases failed validation");
+    // ── Duplicate title protection ─────────────────────────────────────
+    const titleLower = validated.title.toLowerCase().trim();
+    if (generatedTitles.has(titleLower)) {
+      logger.warn(`Duplicate title detected: "${validated.title}". Retrying...`);
+      lastError = new Error("Duplicate problem title generated");
+      continue;
+    }
+    generatedTitles.add(titleLower);
+
+    // ── Clean and validate reference solution ───────────────────────────
+    validated.referenceSolution = cleanCode(validated.referenceSolution);
+
+    logger.info(`[generateProblem] Validating ${validated.testCases.length} test cases...`);
+
+    let allTestsPassed = true;
+
+    for (let i = 0; i < validated.testCases.length; i++) {
+      const tc = validated.testCases[i]!;
+
+      try {
+        const actualOutput = await executeReferenceSolution(
+          validated.referenceSolution,
+          tc.input,
+          params.language,
+        );
+
+        if (actualOutput !== tc.expected) {
+          logger.warn(
+            `[generateProblem] Fixed expected output for test case ${i + 1}. ` +
+              `Old: "${tc.expected}" → New: "${actualOutput}"`
+          );
+          tc.expected = actualOutput;
+        }
+      } catch (execError: any) {
+        logger.warn(`[generateProblem] Reference solution failed on test case ${i + 1}`, {
+          input: tc.input,
+          error: execError.message,
+        });
+
+        lastError = new Error(`Reference solution failed on test case ${i + 1}`);
+        allTestsPassed = false;
+        break;
+      }
+    }
+
+    if (!allTestsPassed) {
       continue;
     }
 
-    logger.info(
-      `Problem generated and validated successfully: "${validated.title}" (attempt ${attempt})`,
-    );
+    logger.info(`[generateProblem] Successfully generated: "${validated.title}"`);
     return validated;
   }
 
-  // All attempts exhausted
-  logger.error("[generateProblem] All attempts failed", {
-    lastError: lastError.message,
-  });
+  logger.error("[generateProblem] All attempts failed", { lastError: lastError.message });
   throw lastError;
 };
 
-// ─── AI feedback ──────────────────────────────────────────────────────────────
+// ─── AI Feedback (unchanged) ──────────────────────────────────────────────────
 
 export const generateFeedbackFromAI = async (
   params: FeedbackParams,
 ): Promise<AIFeedbackResult> => {
   const client = getClient();
 
-  logger.info(
-    `Generating AI feedback via HuggingFace (${params.passed}/${params.total} passed)`,
-  );
+  logger.info(`Generating AI feedback (${params.passed}/${params.total} passed)`);
 
-  let response: Awaited<ReturnType<InferenceClient["chatCompletion"]>>;
   try {
-    response = await client.chatCompletion({
+    const response = await client.chatCompletion({
       model: MODELS.feedback,
       messages: [{ role: "user", content: buildFeedbackPrompt(params) }],
       max_tokens: 512,
-      temperature: 0.4, // more deterministic for feedback
+      temperature: 0.4,
     });
+
+    const raw = extractText(response);
+    const parsed = parseJSON<AIFeedbackResult>(raw, "generateFeedback");
+
+    if (!parsed.analysis || !parsed.suggestions || !parsed.complexity) {
+      throw new Error("AI feedback response missing required fields");
+    }
+
+    return parsed;
   } catch (err) {
-    logger.error("HuggingFace feedback call failed", err);
-    throw new Error("Failed to reach AI provider");
+    logger.error("AI feedback generation failed", err);
+    throw new Error("Failed to generate AI feedback");
   }
-
-  const raw = extractText(response);
-  const parsed = parseJSON<AIFeedbackResult>(raw, "generateFeedback");
-
-  if (!parsed.analysis || !parsed.suggestions || !parsed.complexity) {
-    logger.error("AI feedback response failed sanity check", { parsed });
-    throw new Error("AI feedback response did not match expected shape");
-  }
-
-  return parsed;
 };

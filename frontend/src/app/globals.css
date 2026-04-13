@@ -163,15 +163,57 @@
 
 /* globals.css */
 @layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    /* Default (Light Mode) Colors */
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
   }
-  .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+
+  /* Light Mode Hover */
+  .custom-scrollbar:hover {
+    scrollbar-color: #d4d4d8 transparent; /* zinc-300 */
+  }
+
+  /* Dark Mode Hover (Targeting .dark class on <html> or <body>) */
+  :where(.dark) .custom-scrollbar:hover {
+    scrollbar-color: #3f3f46 transparent; /* zinc-700 */
+  }
+
+  /* Webkit version (Chrome/Safari/Edge) */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px; /* Slightly thinner for a cleaner look */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+
+  /* Light Mode Thumb on Hover */
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: #d4d4d8; /* Light gray for the light theme */
+  }
+
+  /* Dark Mode Thumb on Hover */
+  :where(.dark) .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: #3f3f46; /* Dark gray for the dark theme */
   }
 }
 
+.mask-fade-edges {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+}
 /* globals.css */
 @keyframes scholar-pulse {
   0%, 100% { opacity: 0.3; transform: scale(0.8); }

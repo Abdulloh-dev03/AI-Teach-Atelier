@@ -6,6 +6,7 @@ import {
   getProblem,
   submitProblem,
   deleteProblem,
+  deleteAllProblems,
 } from '#src/controllers/problem.controller.js';
 import rateLimit from 'express-rate-limit';
 
@@ -28,4 +29,5 @@ router.get('/my', getMyProblems);
 router.get('/:id', getProblem);
 router.post('/:id/submit', submitProblem);
 router.delete('/:id', deleteProblem);
+router.delete('/delete-all', deleteAllProblems);
 export default router;

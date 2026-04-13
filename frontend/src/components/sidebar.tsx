@@ -8,8 +8,6 @@ import { useGSAP } from "@gsap/react";
 import {
   LayoutDashboard,
   MessageSquare,
-  Users,
-  Swords,
   User,
   ChevronLeft,
   Menu,
@@ -25,11 +23,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import Image from "next/image";
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleAction: () => void;
 }
+
+// Helper Component for consistent Avatar rendering
+const UserAvatar = ({ src }: { src?: string | null }) => (
+  <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/20 overflow-hidden shrink-0">
+    {src ? (
+      <Image
+        src={src}
+        alt="Profile"
+        width={40}
+        height={40}
+        className="object-cover h-full w-full"
+      />
+    ) : (
+      <User className="h-5 w-5 text-accent" />
+    )}
+  </div>
+);
 
 export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
   const pathname = usePathname();
@@ -42,20 +58,16 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/chat", label: "Chat", icon: MessageSquare },
-    { href: "/community", label: "Community", icon: Users },
-    { href: "/battle", label: "Battle", icon: Swords },
     { href: "/problems", label: "Problems", icon: ScrollText },
   ];
 
   useGSAP(() => {
-    // Animate width
     gsap.to(sidebarRef.current, {
       width: isCollapsed ? 72 : 240,
       duration: 0.4,
       ease: "power2.out",
     });
 
-    // Animate labels
     gsap.to(labelsRef.current, {
       opacity: isCollapsed ? 0 : 1,
       x: isCollapsed ? -10 : 0,
@@ -85,9 +97,7 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
             </div>
             {!isCollapsed && (
               <div className="flex flex-col min-w-max">
-                <span className="font-bold text-lg tracking-tight">
-                  AI Teach
-                </span>
+                <span className="font-bold text-lg tracking-tight">AI Teach</span>
                 <span className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.2em] -mt-1">
                   Digital Atelier
                 </span>
@@ -126,8 +136,7 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
                   }}
                   className={cn(
                     "tracking-tight whitespace-nowrap transition-all duration-200",
-                    isCollapsed &&
-                      "opacity-0 pointer-events-none w-0 overflow-hidden",
+                    isCollapsed && "opacity-0 pointer-events-none w-0 overflow-hidden",
                   )}
                 >
                   {link.label}
@@ -172,9 +181,9 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
                 <div className="flex items-center gap-3 px-2">
                   <div
                     onClick={() => router.push("/profile")}
-                    className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/20 cursor-pointer hover:bg-accent/20 transition"
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <User className="h-5 w-5 text-accent" />
+                    <UserAvatar src={user.profilePic} />
                   </div>
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-sm font-bold text-text-primary truncate">
@@ -188,8 +197,11 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/20 cursor-help">
-                      <User className="h-5 w-5 text-accent" />
+                    <div
+                      onClick={() => router.push("/profile")}
+                      className="cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      <UserAvatar src={user.profilePic} />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -215,9 +227,7 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
                 disabled={isSigningOut}
                 className={cn(
                   "w-full cursor-pointer",
-                  isCollapsed
-                    ? "h-10 w-10 p-0"
-                    : "justify-start gap-3 h-10 px-3",
+                  isCollapsed ? "h-10 w-10 p-0" : "justify-start gap-3 h-10 px-3",
                 )}
               >
                 <LogOut className="h-5 w-5 shrink-0" />
@@ -238,7 +248,7 @@ export function Sidebar({ isCollapsed, onToggleAction }: SidebarProps) {
               variant="secondary"
               size="icon"
               onClick={onToggleAction}
-              className=" h-8 w-8 cursor-pointer"
+              className="h-8 w-8 cursor-pointer"
             >
               {isCollapsed ? (
                 <Menu className="h-4 w-4" />

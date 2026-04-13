@@ -4,6 +4,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  profilePic: string | null;
   createdAt: string;
   remainingToday: number;
 }
@@ -15,6 +16,11 @@ interface AuthResponse {
 
 interface ProfileResponse {
   user: User;
+}
+
+interface UploadProfilePicResponse {
+  message: string;
+  profilePic: string;
 }
 
 export const authApi = api.injectEndpoints({
@@ -49,6 +55,16 @@ export const authApi = api.injectEndpoints({
       transformResponse: (response: ProfileResponse) => response.user,
       providesTags: ["User"],
     }),
+    uploadProfilePic: builder.mutation<string, FormData>({
+      query: (formData) => ({
+        url: "/user/profile-pic",
+        method: "PUT",
+        body: formData,
+      }),
+      transformResponse: (response: UploadProfilePicResponse) =>
+        response.profilePic,
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
@@ -57,4 +73,5 @@ export const {
   useSignInMutation,
   useSignOutMutation,
   useGetProfileQuery,
+  useUploadProfilePicMutation,
 } = authApi;
