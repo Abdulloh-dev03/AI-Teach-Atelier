@@ -1,4 +1,4 @@
-# AI Teach Atelier
+# AI Teach Atelier  🌐Live https://ai-teach-atelier.vercel.app
 
 AI Teach Atelier is a full-stack AI learning platform for coding practice. It combines AI-generated programming challenges, an in-browser coding workspace, code execution and judging, and a persistent AI chat assistant into a single workflow. Users can sign up, generate unique problems by language and difficulty, solve them in the browser, review submissions, and chat with Friday AI for guidance.
 
