@@ -68,7 +68,7 @@ export function MessageList({
             />
           ))}
 
-          {isLoading && <Leapfrog size="40" speed="2.5" color="grey" />}
+          {/* {isLoading && <Leapfrog size="40" speed="2.5" color="grey" />} */}
         </div>
       </div>
     </div>

@@ -17,6 +17,8 @@ import { useGetProfileQuery } from "@/store/authApi";
 import { MessageItemProps } from "./types";
 import { Button } from "../ui/button";
 import { extensionMap } from "@/types";
+import { Infinity } from 'ldrs/react'
+
 
 type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & {
   inline?: boolean;
@@ -170,9 +172,14 @@ export const MessageItem = memo(
               <div className="flex items-center gap-3 rounded-full bg-white/70 px-4 py-3 text-sm text-text-secondary shadow-sm ring-1 ring-border-subtle backdrop-blur dark:bg-surface-card/90">
                 <span className="font-medium">Friday is thinking</span>
                 <div className="flex items-center gap-1">
-                  <span className="h-2 w-2 animate-[bounce_1.4s_infinite] rounded-full bg-accent" />
-                  <span className="h-2 w-2 animate-[bounce_1.4s_0.15s_infinite] rounded-full bg-accent/80" />
-                  <span className="h-2 w-2 animate-[bounce_1.4s_0.3s_infinite] rounded-full bg-accent/60" />
+                  <Infinity
+                    size="40"
+                    stroke="2"
+                    strokeLength="0.15"
+                    bgOpacity="0.1"
+                    speed="1.3"
+                    color="gray" 
+                  />
                 </div>
               </div>
             </div>
