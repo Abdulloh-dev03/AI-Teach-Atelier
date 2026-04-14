@@ -5,7 +5,6 @@ import { useAutoScroll } from "@/hooks/use-auto-scroll";
 import { MessageItem } from "./message-item";
 import { Message } from "./types";
 import { Leapfrog } from "ldrs/react";
-import "ldrs/react/Leapfrog.css";
 import { Sparkles } from "lucide-react";
 
 interface MessageListProps {

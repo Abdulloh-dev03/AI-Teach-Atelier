@@ -1,6 +1,5 @@
-import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { PanelRightClose, PanelRight, Sparkles } from "lucide-react";
+import { PanelRightClose, PanelRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatLayoutProps } from "./types";
 

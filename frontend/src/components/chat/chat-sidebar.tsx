@@ -12,9 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { TailChase } from "ldrs/react";
-import "ldrs/react/TailChase.css";
 import { useRouter } from "next/navigation";
+import { TailChase } from 'ldrs/react';
+
 
 export function MusingItem({
   title,
