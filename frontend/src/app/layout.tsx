@@ -27,6 +27,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={cn(
         "font-sans scroll-smooth",
         manrope.variable,

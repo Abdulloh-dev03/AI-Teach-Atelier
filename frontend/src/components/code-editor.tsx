@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Editor from "@monaco-editor/react";
 
 interface CodeEditorProps {
@@ -11,12 +11,31 @@ interface CodeEditorProps {
 }
 
 const STARTER_CODE: Record<string, string> = {
-  python: "import sys\ninput = sys.stdin.readline\n\n",
-  javascript:
-    "const lines = require('fs').readFileSync('/dev/stdin','utf8').split('\\n');\n\n",
-  typescript:
-    "const lines = require('fs').readFileSync('/dev/stdin','utf8').split('\\n');\n\n",
-  cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}",
+  python: "# Write your Python solution here.\n",
+  javascript: "// Write your JavaScript solution here.\n",
+  typescript: "// Write your TypeScript solution here.\n",
+  cpp: "// Write your C++ solution here.\n",
+};
+
+const BROKEN_PLACEHOLDERS = new Set([
+  "Python Cod",
+  "Python Code",
+  "JavaScript Cod",
+  "JavaScript Code",
+  "TypeScript Cod",
+  "TypeScript Code",
+  "C++ Cod",
+  "C++ Code",
+]);
+
+const getStarterCode = (language: string) => STARTER_CODE[language] ?? "";
+
+const normalizeInitialCode = (value: string | null, language: string) => {
+  if (!value || BROKEN_PLACEHOLDERS.has(value.trim())) {
+    return getStarterCode(language);
+  }
+
+  return value;
 };
 
 export function CodeEditor({
@@ -25,22 +44,32 @@ export function CodeEditor({
   code,
   onChangeAction,
 }: CodeEditorProps) {
-  // Try to load saved code on initial mount
-  useEffect(() => {
-    const savedCode = localStorage.getItem(`problem-code-${problemId}`);
-    if (savedCode) {
-      onChangeAction(savedCode);
-    } else if (!code && STARTER_CODE[language]) {
-      onChangeAction(STARTER_CODE[language]);
-    }
-  }, [problemId, language]);
+  const storageKey = useMemo(() => `problem-code-${problemId}`, [problemId]);
+  const pendingInitialCodeRef = useRef<{
+    storageKey: string;
+    code: string;
+  } | null>(null);
 
-  // Save to local storage whenever code changes
+  // Load saved code when switching to a new problem or language.
   useEffect(() => {
-    if (code) {
-      localStorage.setItem(`problem-code-${problemId}`, code);
+    const savedCode = localStorage.getItem(storageKey);
+    const initialCode = normalizeInitialCode(savedCode, language);
+
+    pendingInitialCodeRef.current = { storageKey, code: initialCode };
+    onChangeAction(initialCode);
+  }, [storageKey, language, onChangeAction]);
+
+  // Save to local storage whenever code changes after the initial load settles.
+  useEffect(() => {
+    const pendingInitialCode = pendingInitialCodeRef.current;
+
+    if (pendingInitialCode?.storageKey === storageKey) {
+      if (code !== pendingInitialCode.code) return;
+      pendingInitialCodeRef.current = null;
     }
-  }, [code, problemId]);
+
+    localStorage.setItem(storageKey, code);
+  }, [code, storageKey]);
 
   return (
     <div className="w-full h-full pt-1">

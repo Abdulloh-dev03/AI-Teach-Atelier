@@ -9,6 +9,8 @@ import {
   Download,
   RefreshCw,
   Pencil,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -18,6 +20,7 @@ import { MessageItemProps } from "./types";
 import { Button } from "../ui/button";
 import { extensionMap } from "@/types";
 import { Infinity } from 'ldrs/react'
+import Image from "next/image";
 
 
 type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & {
@@ -90,20 +93,22 @@ const CodeBlock = ({
           </Button>
         </div>
       </div>
-      <SyntaxHighlighter
-        style={oneDark}
-        language={language}
-        PreTag="div"
-        customStyle={{
-          margin: 0,
-          padding: "24px",
-          background: "transparent",
-          fontSize: "14px",
-          lineHeight: "1.6",
-        }}
-      >
-        {value}
-      </SyntaxHighlighter>
+      <div className="w-full max-w-full overflow-x-auto block min-w-0">
+        <SyntaxHighlighter
+          style={oneDark}
+          language={language}
+          PreTag="div"
+          customStyle={{
+            margin: 0,
+            padding: "24px",
+            background: "transparent",
+            fontSize: "14px",
+            lineHeight: "1.6",
+          }}
+        >
+          {value}
+        </SyntaxHighlighter>
+      </div>
     </div>
   );
 };
@@ -123,9 +128,10 @@ export const MessageItem = memo(
     const { data: user } = useGetProfileQuery();
     const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "U";
 
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(message.content);
-    const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(message.content);
+  const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
     const handleCopy = async () => {
       await navigator.clipboard.writeText(message.content);
@@ -141,6 +147,11 @@ export const MessageItem = memo(
     };
 
     const isEmptyAI = !isUser && !message.content.trim();
+    const hasLongUserContent = isUser && message.content.length > 250;
+    const displayContent =
+      hasLongUserContent && !isExpanded
+        ? `${message.content.slice(0, 250)}...`
+        : message.content;
 
     return (
       <div
@@ -170,7 +181,7 @@ export const MessageItem = memo(
           {isEmptyAI ? (
             <div className="flex min-h-12 items-end">
               <div className="flex items-center gap-3 rounded-full bg-white/70 px-4 py-3 text-sm text-text-secondary shadow-sm ring-1 ring-border-subtle backdrop-blur dark:bg-surface-card/90">
-                <span className="font-medium">Friday is thinking</span>
+                <span className="font-medium">AI is thinking</span>
                 <div className="flex items-center gap-1">
                   <Infinity
                     size="40"
@@ -237,53 +248,112 @@ export const MessageItem = memo(
               ) : (
                 <div
                   className={cn(
-                    "prose prose-sm max-w-none wrap-break-words",
+                    "prose prose-sm max-w-none wrap-break-word w-full min-w-0 overflow-hidden",
                     isUser
                       ? "prose-invert dark:prose-neutral"
                       : "dark:prose-invert",
                   )}
                 >
-                  {message.imageUrl && (
-                    <div className="mb-2">
-                      <img
-                        src={message.imageUrl}
-                        alt="Uploaded content"
-                        className="rounded-lg max-w-full h-auto border border-border-subtle shadow-sm"
-                      />
-                    </div>
-                  )}
-                  <ReactMarkdown
-                    components={{
-                      code({
-                        inline,
-                        className,
-                        children,
-                        ...props
-                      }: MarkdownCodeProps) {
-                        const match = /language-(\w+)/.exec(className || "");
-                        return !inline && match ? (
-                          <CodeBlock
-                            language={match[1]}
-                            value={String(children).replace(/\n$/, "")}
-                          />
-                        ) : (
-                          <code
-                            className={cn(
-                              "px-1.5 py-0.5 rounded font-mono text-sm",
-                              isUser
-                                ? "bg-white/10 text-white"
-                                : "bg-accent/10 text-accent",
-                            )}
-                            {...props}
-                          >
-                            {children}
-                          </code>
-                        );
-                      },
-                    }}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
+                   {message.imageUrl && (
+                     <div className="mb-2">
+                       <Image
+                         width={500}
+                          height={500}
+                         src={message.imageUrl}
+                         alt="Uploaded content"
+                         className="rounded-lg max-w-full h-auto border border-border-subtle shadow-sm"
+                       />
+                     </div>
+                   )}
+                   {!isUser ? (
+                     <ReactMarkdown
+                       components={{
+                         code({
+                           inline,
+                           className,
+                           children,
+                           ...props
+                         }: MarkdownCodeProps) {
+                           const match = /language-(\w+)/.exec(className || "");
+                           return !inline && match ? (
+                             <CodeBlock
+                               language={match[1]}
+                               value={String(children).replace(/\n$/, "")}
+                             />
+                           ) : (
+                             <code
+                               className={cn(
+                                 "px-1.5 py-0.5 rounded font-mono text-sm",
+                                 isUser
+                                   ? "bg-white/10 text-white"
+                                   : "bg-accent/10 text-accent",
+                               )}
+                               {...props}
+                             >
+                               {children}
+                             </code>
+                           );
+                         },
+                       }}
+                     >
+                       {message.content}
+                     </ReactMarkdown>
+                   ) : (
+                     <>
+                       <ReactMarkdown
+                         components={{
+                           code({
+                             inline,
+                             className,
+                             children,
+                             ...props
+                           }: MarkdownCodeProps) {
+                             const match = /language-(\w+)/.exec(className || "");
+                             return !inline && match ? (
+                               <CodeBlock
+                                 language={match[1]}
+                                 value={String(children).replace(/\n$/, "")}
+                               />
+                             ) : (
+                               <code
+                                 className={cn(
+                                   "px-1.5 py-0.5 rounded font-mono text-sm",
+                                   isUser
+                                     ? "bg-white/10 text-white"
+                                     : "bg-accent/10 text-accent",
+                                 )}
+                                 {...props}
+                               >
+                                 {children}
+                               </code>
+                             );
+                           },
+                         }}
+                        >
+                        {displayContent}
+                       </ReactMarkdown>
+                      {hasLongUserContent && (
+                         <Button
+                           onClick={() => setIsExpanded(!isExpanded)}
+                           variant="link"
+                           size="sm"
+                           className="cursor-pointer text-zinc-400 font-bold mt-1 flex items-center gap-1"
+                         >
+                           {!isExpanded ? (
+                             <>
+                               Show More
+                               <ChevronDown size={16} />
+                             </>
+                           ) : (
+                             <>
+                               Show Less
+                               <ChevronUp size={16} />
+                             </>
+                           )}
+                         </Button>
+                       )}
+                     </>
+                   )}
                 </div>
               )}
             </div>

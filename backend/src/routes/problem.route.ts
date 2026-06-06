@@ -8,6 +8,10 @@ import {
   deleteProblem,
   deleteAllProblems,
 } from '#src/controllers/problem.controller.js';
+import {
+  startProblemGeneration,
+  getProblemGenerationStatus,
+} from '#src/controllers/problemGeneration.controller.js';
 import rateLimit from 'express-rate-limit';
 
 // Separate limiter for AI generation — it's expensive
@@ -25,6 +29,8 @@ const router = Router();
 router.use(auth);
 
 router.post('/generate', generateLimiter, generateProblem);
+router.post('/generations', startProblemGeneration);
+router.get('/generations/:id', getProblemGenerationStatus);
 router.get('/my', getMyProblems);
 router.get('/:id', getProblem);
 router.post('/:id/submit', submitProblem);

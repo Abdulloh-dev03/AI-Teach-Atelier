@@ -34,8 +34,9 @@ export const sendMessageByUser = async (req: AuthRequest, res: Response) => {
     logger.info(`Message sent successfully by user ${userId}`);
     return res.status(200).json(result);
   } catch (error: any) {
+    const msg = error instanceof Error ? error.message : String(error);
     logger.error("Message sent failed", error);
-    return res.status(500).json({ error: "Message sent failed" });
+    return res.status(500).json({ error: "Message sent failed: " + msg });
   }
 };
 

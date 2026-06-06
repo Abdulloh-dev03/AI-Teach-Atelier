@@ -1,25 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  type Result,
+  type RunCodeResponse,
   useGetProblemByIdQuery,
   useSubmitSolutionMutation,
   useRunCodeMutation,
 } from "@/store/problemApi";
-import { useGetSubmissionsQuery } from "@/store/submissionApi";
+import {
+  type SubmissionResponse,
+  useGetSubmissionsQuery,
+} from "@/store/submissionApi";
 import { CodeEditor } from "@/components/code-editor";
 import { ResultsPanel } from "@/components/results-panel";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Loader2,
   Play,
-  Code2,
   AlertCircle,
-  FileText,
   CheckCircle2,
   ArrowRight,
   XCircle,
@@ -30,6 +32,37 @@ import {
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type ApiError = {
+  data?: {
+    message?: string;
+    error?: string;
+  };
+};
+
+const isApiError = (error: unknown): error is ApiError =>
+  typeof error === "object" && error !== null && "data" in error;
+
+const getErrorMessage = (error: unknown) => {
+  if (!isApiError(error)) return undefined;
+  return error.data?.message || error.data?.error;
+};
+
+const toSubmissionResult = (
+  result: RunCodeResponse,
+  language: string,
+): SubmissionResponse => ({
+  status: result.status as SubmissionResponse["status"],
+  passed: result.passed,
+  total: result.total,
+  runtime: result.runtime,
+  language,
+  results: result.results.map((test): Result => ({
+    ...test,
+    isHidden: false,
+    status: test.status as Result["status"],
+  })),
+});
 
 export default function ProblemDetailsPage() {
   const params = useParams() as { id: string };
@@ -43,11 +76,11 @@ export default function ProblemDetailsPage() {
   } = useGetProblemByIdQuery(problemId);
   const [
     submitSolution,
-    { isLoading: isSubmitting, data: submissionResult, error: submitError },
+    { isLoading: isSubmitting, error: submitError },
   ] = useSubmitSolutionMutation();
   const [
     runCode,
-    { isLoading: isRunning, data: runResult, error: runError },
+    { isLoading: isRunning, error: runError },
   ] = useRunCodeMutation();
 
   const {
@@ -57,19 +90,12 @@ export default function ProblemDetailsPage() {
 
   const [code, setCode] = useState<string>("");
   const [activeTab, setActiveTab] = useState("description");
-  const [localSubmissionResult, setLocalSubmissionResult] = useState<any>(null);
+  const [localSubmissionResult, setLocalSubmissionResult] =
+    useState<SubmissionResponse | null>(null);
 
-  useEffect(() => {
-    if (submissionResult) {
-      setLocalSubmissionResult(submissionResult);
-    }
-  }, [submissionResult]);
-
-  useEffect(() => {
-    if (runResult) {
-      setLocalSubmissionResult(runResult);
-    }
-  }, [runResult]);
+  const handleCodeChange = useCallback((value: string | undefined) => {
+    setCode(value || "");
+  }, []);
 
   const handleRun = async () => {
     if (!problem || !code) return;
@@ -82,11 +108,12 @@ export default function ProblemDetailsPage() {
       }));
 
     try {
-      await runCode({
+      const result = await runCode({
         code,
         language: problem.language,
         testCases: sampleTestCases,
       }).unwrap();
+      setLocalSubmissionResult(toSubmissionResult(result, problem.language));
     } catch (err) {
       console.error("Run failed", err);
     }
@@ -96,11 +123,12 @@ export default function ProblemDetailsPage() {
     if (!problem || !code) return;
 
     try {
-      await submitSolution({
+      const result = await submitSolution({
         id: problem.id,
         code,
         language: problem.language,
       }).unwrap();
+      setLocalSubmissionResult(result);
     } catch (err) {
       console.error("Submission failed", err);
     }
@@ -133,7 +161,7 @@ export default function ProblemDetailsPage() {
           </div>
           <h2 className="text-2xl font-bold mb-4 text-primary tracking-tight">Challenge not found</h2>
           <p className="text-on-surface-variant font-medium opacity-80 leading-relaxed">
-            This module has been archived or doesn't exist in your vault.
+            This module has been archived or does not exist in your vault.
           </p>
           <Button
             onClick={() => router.push("/dashboard")}
@@ -308,7 +336,7 @@ export default function ProblemDetailsPage() {
                problemId={problem.id}
                language={problem.language}
                code={code}
-               onChangeAction={(val) => setCode(val || "")}
+               onChangeAction={handleCodeChange}
              />
            </div>
 
@@ -371,7 +399,7 @@ export default function ProblemDetailsPage() {
                 <div className="flex flex-col">
                   <span className="text-xs font-bold uppercase tracking-widest">Evolution Interrupted</span>
                   <span className="text-[11px] opacity-80">
-                    {(submitError as any)?.data?.message || (runError as any)?.data?.message || "Execution Protocol Failed."}
+                    {getErrorMessage(submitError) || getErrorMessage(runError) || "Execution Protocol Failed."}
                   </span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => {}} className="text-white hover:bg-white/10 p-1 h-auto"><X className="w-4 h-4" /></Button>

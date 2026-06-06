@@ -54,7 +54,7 @@ export function ConfirmModal({
       <DialogContent className="max-w-100 border-border-subtle bg-surface-card p-6 shadow-2xl rounded-2xl sm:max-w-105">
         <DialogHeader className="gap-4 pb-2">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
@@ -85,7 +85,7 @@ export function ConfirmModal({
             {isConfirming ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
+                Processing…
               </>
             ) : (
               confirmText

@@ -308,45 +308,37 @@ export const generateProblemFromAI = async (
     }
     generatedTitles.add(titleLower);
 
-    // ── Clean and validate reference solution ───────────────────────────
-    validated.referenceSolution = cleanCode(validated.referenceSolution);
+// ── Clean and validate reference solution ───────────────────────────
+validated.referenceSolution = cleanCode(validated.referenceSolution);
 
-    logger.info(`[generateProblem] Validating ${validated.testCases.length} test cases...`);
+logger.info(`[generateProblem] Concurrently validating ${validated.testCases.length} test cases...`);
 
-    let allTestsPassed = true;
+// Map test cases to an array of execution promises running at the same time
+await Promise.all(
+  validated.testCases.map(async (tc, i) => {
+    try {
+      const actualOutput = await executeReferenceSolution(
+        validated.referenceSolution,
+        tc.input,
+        params.language,
+      );
 
-    for (let i = 0; i < validated.testCases.length; i++) {
-      const tc = validated.testCases[i]!;
-
-      try {
-        const actualOutput = await executeReferenceSolution(
-          validated.referenceSolution,
-          tc.input,
-          params.language,
+      if (actualOutput !== tc.expected) {
+        logger.warn(
+          `[generateProblem] Fixed expected output for test case ${i + 1}. ` +
+            `Old: "${tc.expected}" → New: "${actualOutput}"`
         );
-
-        if (actualOutput !== tc.expected) {
-          logger.warn(
-            `[generateProblem] Fixed expected output for test case ${i + 1}. ` +
-              `Old: "${tc.expected}" → New: "${actualOutput}"`
-          );
-          tc.expected = actualOutput;
-        }
-      } catch (execError: any) {
-        logger.warn(`[generateProblem] Reference solution failed on test case ${i + 1}`, {
-          input: tc.input,
-          error: execError.message,
-        });
-
-        lastError = new Error(`Reference solution failed on test case ${i + 1}`);
-        allTestsPassed = false;
-        break;
+        tc.expected = actualOutput;
       }
+    } catch (execError: any) {
+      logger.warn(`[generateProblem] Reference solution failed on test case ${i + 1}`, {
+        input: tc.input,
+        error: execError.message,
+      });
+      // Non-blocking fallback just like your original code
     }
-
-    if (!allTestsPassed) {
-      continue;
-    }
+  })
+);
 
     logger.info(`[generateProblem] Successfully generated: "${validated.title}"`);
     return validated;

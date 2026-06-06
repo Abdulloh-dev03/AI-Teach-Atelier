@@ -150,4 +150,4 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+export { Button }

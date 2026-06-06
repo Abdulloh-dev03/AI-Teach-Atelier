@@ -93,7 +93,7 @@ export const chatApi = api.injectEndpoints({
       query: (sessionId) => `/chat/${sessionId}`,
       transformResponse: (response: ApiSession): Session =>
         normalizeSession(response),
-      providesTags: (result, error, sessionId) => [
+      providesTags: (_result, _error, sessionId) => [
         { type: "Session", id: sessionId },
       ],
     }),
@@ -103,7 +103,7 @@ export const chatApi = api.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: (result, error, { sessionId }) =>
+      invalidatesTags: (_result, _error, { sessionId }) =>
         sessionId ? ["Session", { type: "Session", id: sessionId }] : ["Session"],
       async onQueryStarted(
         { content, sessionId, imageUrl },
@@ -190,7 +190,7 @@ export const chatApi = api.injectEndpoints({
         method: "POST",
         body: { aiModel },
       }),
-      invalidatesTags: (result, error, { sessionId }) => [
+      invalidatesTags: (_result, _error, { sessionId }) => [
         { type: "Session", id: sessionId },
       ],
     }),

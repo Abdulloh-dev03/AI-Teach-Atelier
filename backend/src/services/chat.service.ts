@@ -25,7 +25,6 @@ export const sendMessage = async (
 ) => {
   try {
     let session;
-
     if (sessionId) {
       session = await prisma.chatSession.findFirst({
         where: { id: sessionId, userId },
@@ -49,7 +48,7 @@ export const sendMessage = async (
       },
     });
 
-    // Build history
+    // Reconstruct conversation history safely
     const history: ChatMessageType[] = session.messages.slice(-20).map((m) => ({
       role: m.role === "USER" ? "user" : "assistant",
       content: m.imageUrl
@@ -73,10 +72,11 @@ export const sendMessage = async (
     const client = getClient();
     const model = MODEL_MAP[aiModel];
 
+    // FIX: Drastically increase max_tokens so responses don't get truncated
     const response = await client.chatCompletion({
       model,
       messages: history as any,
-      max_tokens: 512,
+      max_tokens: 2048, // Upgraded from 512 to handle deep code breakdowns completely
       temperature: 0.7,
     });
 
@@ -84,7 +84,7 @@ export const sendMessage = async (
       response?.choices?.[0]?.message?.content?.trim() ??
       "Sorry, I couldn't generate a response.";
 
-    await prisma.chatMessage.create({
+    const assistantMessage = await prisma.chatMessage.create({
       data: {
         sessionId: session.id,
         role: "ASSISTANT",
@@ -92,7 +92,7 @@ export const sendMessage = async (
       },
     });
 
-    return { sessionId: session.id, content: aiResponse };
+    return { sessionId: session.id, content: aiResponse, messageId: assistantMessage.id };
   } catch (error: any) {
     console.error("HF chatCompletion error:", error?.response?.data || error.message);
     throw error;
@@ -150,7 +150,7 @@ export const regenerateResponse = async (
     const response = await client.chatCompletion({
       model,
       messages: history as any,
-      max_tokens: 512,
+      max_tokens: 2048,
       temperature: 0.7,
     });
 
@@ -158,7 +158,7 @@ export const regenerateResponse = async (
       response?.choices?.[0]?.message?.content?.trim() ??
       "Sorry, I couldn't generate a response.";
 
-    await prisma.chatMessage.create({
+    const assistantMessage = await prisma.chatMessage.create({
       data: {
         sessionId: session.id,
         role: "ASSISTANT",
@@ -166,14 +166,13 @@ export const regenerateResponse = async (
       },
     });
 
-    return { sessionId: session.id, content: aiResponse };
+    return { sessionId: session.id, message: assistantMessage };
   } catch (error: any) {
     console.error("Regenerate error:", error);
     throw error;
   }
 };
 
-// NEW: Edit message + automatically regenerate AI response
 export const editUserMessage = async (
   userId: string,
   messageId: string,
@@ -194,13 +193,19 @@ export const editUserMessage = async (
     }
 
     // Update user message
-    await prisma.chatMessage.update({
+    const updatedUserMessage = await prisma.chatMessage.update({
       where: { id: messageId },
       data: { content: newContent },
     });
 
     // Auto-regenerate AI response using the same logic
-    return await regenerateResponse(userId, message.session.id, aiModel);
+    const regenerateResult = await regenerateResponse(userId, message.session.id, aiModel);
+    
+    return {
+      sessionId: message.session.id,
+      userMessage: updatedUserMessage,
+      message: regenerateResult.message
+    };
   } catch (error) {
     throw error;
   }

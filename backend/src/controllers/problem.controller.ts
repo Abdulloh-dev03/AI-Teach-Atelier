@@ -16,7 +16,7 @@ import logger from "#src/config/logger.js";
 import type { Difficulty } from "@prisma/client";
 import { prisma } from "#src/lib/prisma.js";
 
-// POST /api/problems/generate
+// POST /api/problem-generations (async start)
 export const generateProblem = async (
   req: AuthRequest,
   res: Response,
@@ -65,8 +65,10 @@ export const generateProblem = async (
         error: "AI failed to generate a valid problem. This usually happens when the requirements are too complex. Please try again or slightly change your prompt.",
       });
     }
+    
+    const errorMessage = e instanceof Error ? e.message : String(e);
     logger.error("generateProblem error", e);
-    next(e);
+    return res.status(500).json({ error: "Internal server error: " + errorMessage });
   }
 };
 
@@ -80,8 +82,9 @@ export const getMyProblems = async (
     const problems = await getUserProblems(req.user!.id);
     return res.json(problems);
   } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
     logger.error("getMyProblems error", e);
-    next(e);
+    return res.status(500).json({ error: "Internal server error: " + errorMessage });
   }
 };
 
@@ -104,8 +107,10 @@ export const getProblem = async (
     if (e instanceof Error && e.message === "FORBIDDEN") {
       return res.status(403).json({ error: "Access denied" });
     }
+    
+    const errorMessage = e instanceof Error ? e.message : String(e);
     logger.error("getProblem error", e);
-    next(e);
+    return res.status(500).json({ error: "Internal server error: " + errorMessage });
   }
 };
 
@@ -139,49 +144,53 @@ export const submitProblem = async (
     if (e instanceof Error && e.message === "FORBIDDEN") {
       return res.status(403).json({ error: "Access denied" });
     }
+    
+    const errorMessage = e instanceof Error ? e.message : String(e);
     logger.error("submitProblem error", e);
-    next(e);
+    return res.status(500).json({ error: "Internal server error: " + errorMessage });
   }
 };
 
+// DELETE /api/problems/:id
 export const deleteProblem = async (
-  req:AuthRequest,
-  res:Response,
-  next:NextFunction
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const problem = await prisma.problem.findUnique({
-      where:{id:req.params['id'] as string}
-    })
-    if(!problem){
-      return res.status(404).json({error:'Problem not found'})
+      where: { id: req.params['id'] as string }
+    });
+    if (!problem) {
+      return res.status(404).json({ error: 'Problem not found' });
     }
-    if(problem.requestedById !== req.user!.id){
-      return res.status(403).json({error:'Access denied'})
+    if (problem.requestedById !== req.user!.id) {
+      return res.status(403).json({ error: 'Access denied' });
     }
     await prisma.problem.delete({
-      where:{id:req.params['id'] as string}
-    })
-    return res.status(200).json({message:'Problem deleted successfully'})
+      where: { id: req.params['id'] as string }
+    });
+    return res.status(200).json({ message: 'Problem deleted successfully' });
   } catch (error) {
     logger.error("deleteProblem error", error);
     next(error);
   }
 };
 
+// DELETE /api/problems/delete-all
 export const deleteAllProblems = async (
-  req:AuthRequest,
-  res:Response,
-  next:NextFunction
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const userId = req.user!.id;
     await prisma.problem.deleteMany({
-      where:{requestedById:userId}
-    })
-    return res.status(200).json({message:'All problems deleted successfully'})
+      where: { requestedById: userId }
+    });
+    return res.status(200).json({ message: 'All problems deleted successfully' });
   } catch (error) {
     logger.error("deleteAllProblems error", error);
     next(error);
   }
-}
+};

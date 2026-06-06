@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, XCircle, AlertTriangle, Clock, X } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Clock, X, ClipboardCopy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -22,6 +22,7 @@ interface ResultsPanelProps {
 }
 
 export function ResultsPanel({ result, onCloseAction }: ResultsPanelProps) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +30,20 @@ export function ResultsPanel({ result, onCloseAction }: ResultsPanelProps) {
   useEffect(() => {
     // any plugin registration if needed
   }, []);
+
+  const handleCopy = async (text: string, idx: number) => {
+  try {
+    await navigator.clipboard.writeText(text);
+
+    setCopiedIdx(idx);
+
+    setTimeout(() => {
+      setCopiedIdx(null);
+    }, 2000);
+  } catch (error) {
+    console.error("Failed to copy:", error);
+  }
+};
 
   useGSAP(
     () => {
@@ -174,9 +189,48 @@ export function ResultsPanel({ result, onCloseAction }: ResultsPanelProps) {
                         : "hover:bg-surface-elevated/50",
                     )}
                   >
-                    <TableCell className="font-mono text-xs text-text-secondary py-4">
-                      {idx + 1}
-                    </TableCell>
+                    <TableCell className="font-mono text-[11px] max-w-37.5">
+  <div className="flex items-start justify-between gap-2">
+    <div className="whitespace-pre-wrap break-all flex-1">
+      {test.stderr ? (
+        <span className="text-accent-orange">{test.stderr}</span>
+      ) : test.isHidden ? (
+        <span className="opacity-40 italic">Hidden</span>
+      ) : (
+        <span
+          className={cn(
+            !isPassed
+              ? "text-accent-red"
+              : "text-accent-green"
+          )}
+        >
+          {test.received}
+        </span>
+      )}
+    </div>
+
+    {!test.isHidden && (
+      <button
+        onClick={() =>
+          handleCopy(
+            test.stderr
+              ? String(test.stderr)
+              : String(test.received),
+            idx,
+          )
+        }
+        className="shrink-0 p-1.5 rounded-md hover:bg-surface-container-low transition-colors cursor-pointer"
+        title="Copy output"
+      >
+        {copiedIdx === idx ? (
+          <Check className="w-3.5 h-3.5 text-accent-green" />
+        ) : (
+          <ClipboardCopy className="w-3.5 h-3.5 text-text-secondary" />
+        )}
+      </button>
+    )}
+  </div>
+</TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"

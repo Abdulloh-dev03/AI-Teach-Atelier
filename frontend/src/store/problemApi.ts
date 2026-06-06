@@ -34,7 +34,13 @@ export interface Result {
   received: string | null;
   stderr: string | null;
   isHidden: boolean;
-  status: "Passed" | "Wrong Answer" | "Runtime Error" | "Time Limit Exceeded";
+  status:
+    | "Passed"
+    | "Wrong Answer"
+    | "Runtime Error"
+    | "Time Limit Exceeded"
+    | "Compilation Error"
+    | "Output Limit Exceeded";
 }
 
 export interface GenerateProblemRequest {
@@ -51,14 +57,51 @@ export interface GenerateProblemResponse {
   problem: Problem;
 }
 
+export type GenerationStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+
 export interface SubmitSolutionRequest {
   id: string;
   code: string;
   language: string;
 }
 
+export interface RunCodeResponse {
+  status: string;
+  passed: number;
+  total: number;
+  runtime: number;
+  results: Array<{
+    input: string | null;
+    expected: string | null;
+    received: string | null;
+    stderr: string | null;
+    status: string;
+  }>;
+}
+
 export const problemApi = api.injectEndpoints({
   endpoints: (builder) => ({
+    // ---- Async generation endpoints ----
+    startProblemGeneration: builder.mutation<
+      { generationId: string; status: GenerationStatus },
+      GenerateProblemRequest
+    >({
+      query: (body) => ({
+        url: "/problems/generations",
+        method: "POST",
+        body,
+      }),
+      // No immediate cache invalidation; we'll poll status later
+      invalidatesTags: [],
+    }),
+    getProblemGenerationStatus: builder.query<
+      { status: GenerationStatus; problemId?: string; errorMessage?: string },
+      string // generationId
+    >({
+      query: (id) => `/problems/generations/${id}`,
+      providesTags: (result, error, id) => [{ type: "ProblemGeneration", id }],
+    }),
+    // Backward‑compatible endpoint (still used by some UI)
     generateProblem: builder.mutation<
       GenerateProblemResponse,
       GenerateProblemRequest
@@ -105,7 +148,7 @@ export const problemApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Problem", "User"],
     }),
-    runCode: builder.mutation<any, RunCodeRequest>({
+    runCode: builder.mutation<RunCodeResponse, RunCodeRequest>({
       query: (body) => ({
         url: "/run", // Corrected endpoint as per executeRoutes.ts
         method: "POST",
@@ -123,4 +166,8 @@ export const {
   useDeleteProblemMutation,
   useDeleteAllProblemsMutation,
   useRunCodeMutation,
+  // New async generation hooks
+  useStartProblemGenerationMutation,
+  useGetProblemGenerationStatusQuery,
+  useLazyGetProblemGenerationStatusQuery,
 } = problemApi;

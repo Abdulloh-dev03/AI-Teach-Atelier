@@ -1,7 +1,12 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useGenerateProblemMutation } from "@/store/problemApi";
+import {
+  type GenerationStatus,
+  useGetMyProblemsQuery,
+  useStartProblemGenerationMutation,
+  useLazyGetProblemGenerationStatusQuery,
+} from "@/store/problemApi";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,18 +29,31 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { cn } from "@/lib/utils";
 
+type Language = "javascript" | "typescript" | "python";
+type Difficulty = "EASY" | "MEDIUM" | "HARD";
+
+type ApiError = {
+  data?: {
+    message?: string;
+    error?: string;
+  };
+};
+
+const isApiError = (error: unknown): error is ApiError =>
+  typeof error === "object" && error !== null && "data" in error;
+
 export function GenerateModal({ onClick }: { onClick?: () => void }) {
   const [open, setOpen] = useState(false);
-  const [language, setLanguage] = useState<
-    "javascript" | "typescript" | "python"
-  >("javascript");
-  const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">(
-    "EASY",
-  );
+  const [language, setLanguage] = useState<Language>("javascript");
+  const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [generationStatus, setGenerationStatus] =
+    useState<GenerationStatus | null>(null);
 
-  const [generateProblem, { isLoading }] = useGenerateProblemMutation();
+  const [startProblemGeneration, { isLoading: isStarting }] = useStartProblemGenerationMutation();
+  const [triggerGenerationStatus, { isFetching: isFetchingStatus }] = useLazyGetProblemGenerationStatusQuery();
+  const { refetch: refetchProblems } = useGetMyProblemsQuery();
   const router = useRouter();
-  const modalRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
     if (open) {
@@ -49,17 +67,78 @@ export function GenerateModal({ onClick }: { onClick?: () => void }) {
 
   const handleGenerate = async () => {
     try {
-      const res = await generateProblem({ language, difficulty }).unwrap();
-      toast.success("Problem generated successfully! 🎉");
-      setOpen(false);
-      router.push(`/problems/${res.problem.id}`);
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to generate problem");
+      setGenerationStatus("PENDING");
+
+      // 1️⃣ Start the async generation job
+      const startRes = await startProblemGeneration({ language, difficulty }).unwrap();
+      const generationId = startRes.generationId;
+      setGenerationStatus(startRes.status);
+
+      // 2️⃣ Poll for status every 2‑3 seconds
+      const pollInterval = 2500;
+      let attempts = 0;
+      const maxAttempts = 30; // safety cap (≈75 s)
+      let status = "";
+      let problemId: string | undefined;
+
+      // Show syncing UI while we poll
+      setIsSyncing(true);
+      toast.info("Generating AI problem… this may take a moment.");
+
+      for (; attempts < maxAttempts; attempts++) {
+        const data = await triggerGenerationStatus(generationId).unwrap();
+        status = data.status;
+        setGenerationStatus(data.status);
+        if (status === "COMPLETED" && data.problemId) {
+          problemId = data.problemId;
+          break;
+        }
+        if (status === "FAILED") {
+          toast.error(data.errorMessage || "Problem generation failed.");
+          setOpen(false);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, pollInterval));
+      }
+
+      if (status !== "COMPLETED") {
+        toast.error("Generation timed out. Please try again.");
+        setOpen(false);
+        return;
+      }
+
+      // 3️⃣ Generation completed – navigate to the new problem
+      if (problemId) {
+        toast.success("Problem generated successfully! 🎉");
+        setOpen(false);
+        // Invalidate problem list cache so the new problem appears
+        refetchProblems();
+        router.push(`/problems/${problemId}`);
+      }
+    } catch (err: unknown) {
+      // Unexpected errors
+      const message = isApiError(err)
+        ? err.data?.message || err.data?.error
+        : undefined;
+      toast.error(message || "Failed to start problem generation");
+      setGenerationStatus(null);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const isGenerating = isStarting || isFetchingStatus || isSyncing;
+  const buttonStatus = generationStatus ?? (isStarting ? "PENDING" : null);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen && !isGenerating) {
+      setGenerationStatus(null);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <button
           onClick={onClick}
@@ -72,34 +151,34 @@ export function GenerateModal({ onClick }: { onClick?: () => void }) {
           </div>
         </button>
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-120 bg-surface-card/80 backdrop-blur-3xl border border-border-subtle shadow-2xl p-0 overflow-hidden"
+      <DialogContent
+        className="w-[calc(100vw-2rem)] max-w-130 sm:max-w-130 bg-surface-card/95 backdrop-blur-3xl border border-border-subtle shadow-2xl p-0 overflow-hidden"
       >
         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-primary/20 via-primary to-primary/20 shadow-[0_4px_12px_rgba(var(--primary-rgb),0.3)]" />
-        
-        <div className="p-8 space-y-8">
-          <DialogHeader className="modal-animate-in">
-            <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-4 border border-primary/10">
+
+        <div className="min-w-0 p-6 sm:p-8 space-y-7">
+          <DialogHeader className="min-w-0 modal-animate-in">
+            <div className="w-14 h-14 shrink-0 bg-primary/5 rounded-2xl flex items-center justify-center mb-4 border border-primary/10">
               <Wand2 className="w-7 h-7 text-primary" />
             </div>
-            <DialogTitle className="text-3xl font-extrabold tracking-tight text-primary leading-tight">
+            <DialogTitle className="max-w-full text-2xl sm:text-3xl font-extrabold tracking-tight text-primary leading-tight text-wrap">
               Create a Challenge
             </DialogTitle>
-            <DialogDescription className="text-on-surface-variant/70 font-medium leading-relaxed">
+            <DialogDescription className="max-w-full text-on-surface-variant/70 font-medium leading-relaxed text-wrap">
               Define your parameters. Our architect will construct a specialized coding inquiry tailored to your preferences.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 modal-animate-in">
+          <div className="min-w-0 space-y-6 modal-animate-in">
             <div className="space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-on-surface-variant flex items-center gap-2">
-                <Terminal className="w-3 h-3" /> Runtime Language
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant flex items-center gap-2">
+                <Terminal className="w-3 h-3 shrink-0" /> Runtime Language
               </label>
               <Select
                 value={language}
-                onValueChange={(val: any) => setLanguage(val)}
+                onValueChange={(val) => setLanguage(val as Language)}
               >
-                <SelectTrigger className="h-14 bg-surface-container-low/50 border-border-subtle rounded-2xl text-sm font-semibold hover:bg-surface-container transition-colors ring-offset-background focus:ring-1 focus:ring-primary">
+                <SelectTrigger className="h-12 w-full bg-surface-container-low/50 border-border-subtle rounded-2xl text-sm font-semibold hover:bg-surface-container transition-colors ring-offset-background focus:ring-1 focus:ring-primary">
                   <SelectValue placeholder="Select Language" />
                 </SelectTrigger>
                 <SelectContent className="bg-surface-card border-border-subtle rounded-xl shadow-xl">
@@ -111,16 +190,16 @@ export function GenerateModal({ onClick }: { onClick?: () => void }) {
             </div>
 
             <div className="space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-on-surface-variant flex items-center gap-2">
-                <Layers className="w-3 h-3" /> Inquiry Complexity
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant flex items-center gap-2">
+                <Layers className="w-3 h-3 shrink-0" /> Inquiry Complexity
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid min-w-0 grid-cols-3 gap-2">
                 {(["EASY", "MEDIUM", "HARD"] as const).map((diff) => (
                   <button
                     key={diff}
                     onClick={() => setDifficulty(diff)}
                     className={cn(
-                      "h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border cursor-pointer",
+                      "min-w-0 h-12 rounded-xl px-2 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border cursor-pointer",
                       difficulty === diff
                         ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-[1.02]"
                         : "bg-surface-container-low text-on-surface-variant border-border-subtle hover:border-primary/30"
@@ -130,29 +209,43 @@ export function GenerateModal({ onClick }: { onClick?: () => void }) {
                   </button>
                 ))}
               </div>
+              {/* Dynamic notice for higher difficulty tiers */}
+              {(difficulty === "MEDIUM" || difficulty === "HARD") && (
+                <div className="mt-4 min-w-0 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-amber-900 text-sm leading-relaxed">
+                  <p className="font-semibold mb-1">Note</p>
+                  <p className="text-wrap">
+                    Higher difficulty modules run deeper validation and may take up to 45 seconds.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="pt-4 flex items-center gap-3 modal-animate-in">
+          <div className="pt-2 grid grid-cols-1 sm:grid-cols-[0.8fr_1.4fr] gap-3 modal-animate-in">
             <Button
               variant="ghost"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-              className="flex-1 h-14 rounded-2xl font-bold text-on-surface-variant hover:bg-destructive/5 hover:text-destructive transition-all"
+              onClick={() => handleOpenChange(false)}
+              disabled={isGenerating}
+              className="h-12 sm:h-14 rounded-2xl font-bold text-on-surface-variant hover:bg-destructive/5 hover:text-destructive transition-all"
             >
               Cancel
             </Button>
             <Button
               onClick={handleGenerate}
-              disabled={isLoading}
-              className="flex-[1.5] h-14 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3 active:scale-95 transition-all"
+              disabled={isGenerating}
+              className="min-w-0 h-12 sm:h-14 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 gap-2 active:scale-95 transition-all"
             >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+                  <span className="min-w-0 truncate text-sm">
+                    {buttonStatus ?? "PENDING"}
+                  </span>
+                </>
               ) : (
                 <>
-                  <Plus className="h-5 w-5" />
-                  Generate Inquiry
+                  <Plus className="h-5 w-5 shrink-0" />
+                  <span className="truncate">Generate Inquiry</span>
                 </>
               )}
             </Button>

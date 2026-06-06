@@ -57,6 +57,7 @@ export function ChatInput({
   const handleSend = () => {
     onSendMessageAction(imageUrl || undefined);
     setImageUrl(null);
+    onInputChangeAction(""); // Clear input field after sending
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,14 +80,14 @@ export function ChatInput({
                   <div className="w-28 h-28 aspect-square rounded-2xl border border-dashed border-border-subtle bg-accent/5 flex flex-col items-center justify-center gap-2 animate-pulse">
                     <Loader2 className="w-6 h-6 animate-spin text-accent" />
                     <span className="text-[10px] font-medium text-text-secondary">
-                      Uploading...
+                      Uploading…
                     </span>
                   </div>
                 ) : (
                   // 2. SQUARE IMAGE PREVIEW
                   <>
                     <div
-                      className="w-28 h-28 aspect-square overflow-hidden rounded-2xl border border-border-subtle shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+                      className="w-28 aspect-square overflow-hidden rounded-2xl border border-border-subtle shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
                       onClick={() => setIsPreviewOpen(true)}
                     >
                       <img

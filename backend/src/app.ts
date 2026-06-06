@@ -6,6 +6,7 @@ import type { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import logger from "#config/logger.js";
+import { logstreamLogger, logstreamErrorHandler } from "#middleware/logstream.js";
 import executeRoutes from "#routes/executeRoutes.js";
 import authRoutes from "#routes/auth.route.js";
 import problemRoutes from "#routes/problem.route.js";
@@ -53,6 +54,8 @@ app.get("/api", (_req: Request, res: Response) => {
   res.status(200).json({ message: "Code Execution API is running!" });
 });
 
+app.use(logstreamLogger);
+
 app.use("/api", executeRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
@@ -60,6 +63,8 @@ app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/cloudinary", cloudinaryRoutes);
+
+app.use(logstreamErrorHandler);
 
 // Multer-specific error handler (file size / type violations → 400)
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -34,24 +34,6 @@ export class WrapperService {
         match = code.match(/def\s+([a-zA-Z0-9_]+)\s*\(/);
         return match ? match[1] || "solution" : "solution";
 
-      case "java":
-        // Matches: public [Type] myFunc(
-        match = code.match(
-          /public\s+(?:static\s+)?[a-zA-Z0-9_<>\[\]]+\s+([a-zA-Z0-9_]+)\s*\(/,
-        );
-        return match ? match[1] || "solution" : "solution";
-
-      case "c":
-      case "cpp":
-        // Matches: [Type] myFunc(
-        match = code.match(/(?:[a-zA-Z0-9_<>:]+[\s\*&]+)+([a-zA-Z0-9_]+)\s*\(/);
-        return match ? match[1] || "solution" : "solution";
-
-      case "go":
-        // Matches: func myFunc(
-        match = code.match(/func\s+([a-zA-Z0-9_]+)\s*\(/);
-        return match ? match[1] || "solution" : "solution";
-
       default:
         return "solution";
     }
@@ -77,14 +59,6 @@ export class WrapperService {
         return this.wrapNode(code, targetFunc);
       case "python":
         return this.wrapPython(code, targetFunc);
-      case "java":
-        return this.wrapJava(code, targetFunc);
-      case "c":
-        return this.wrapC(code, targetFunc);
-      case "cpp":
-        return this.wrapCpp(code, targetFunc);
-      case "go":
-        return this.wrapGo(code, targetFunc);
       default:
         // Fallback if an unknown language is passed
         return code;
@@ -123,119 +97,6 @@ if __name__ == "__main__":
     result = ${funcName}(input_data)
     if result is not None:
         print(result)
-`;
-  }
-
-  private static wrapJava(code: string, funcName: string): string {
-    return `
-import java.util.Scanner;
-
-public class Solution {
-    ${code}
-
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        // Read all input
-        scanner.useDelimiter("\\\\A");
-        String input = scanner.hasNext() ? scanner.next() : "";
-        scanner.close();
-        
-        Solution sol = new Solution();
-        Object result = sol.${funcName}(input);
-        if (result != null) {
-            System.out.println(result);
-        }
-    }
-}
-`;
-  }
-
-  private static wrapC(code: string, funcName: string): string {
-    return `
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-${code}
-
-int main() {
-    // Read all input from stdin
-    char buffer[4096];
-    size_t length = 0;
-    size_t current_size = 4096;
-    char *input = malloc(current_size);
-    if (!input) return 1;
-    input[0] = '\\0';
-
-    while (fgets(buffer, sizeof(buffer), stdin) != NULL) {
-        size_t chunk_len = strlen(buffer);
-        if (length + chunk_len + 1 > current_size) {
-            current_size *= 2;
-            input = realloc(input, current_size);
-            if (!input) return 1;
-        }
-        strcat(input, buffer);
-        length += chunk_len;
-    }
-
-    // Call the solution
-    char* result = ${funcName}(input);
-    if (result != NULL) {
-        printf("%s\\n", result);
-    }
-
-    free(input);
-    return 0;
-}
-`;
-  }
-
-  private static wrapCpp(code: string, funcName: string): string {
-    return `
-#include <iostream>
-#include <string>
-
-${code}
-
-int main() {
-    std::string input;
-    std::string line;
-    while (std::getline(std::cin, line)) {
-        input += line + "\\n";
-    }
-    // Remove the trailing newline added by the loop, if input was not empty
-    if (!input.empty() && input.back() == '\\n') {
-        input.pop_back();
-    }
-    
-    auto result = ${funcName}(input);
-    std::cout << result << std::endl;
-    return 0;
-}
-`;
-  }
-
-  private static wrapGo(code: string, funcName: string): string {
-    return `
-package main
-
-import (
-    "fmt"
-    "io/ioutil"
-    "os"
-)
-
-${code}
-
-func main() {
-    bytes, _ := ioutil.ReadAll(os.Stdin)
-    input := string(bytes)
-    
-    result := ${funcName}(input)
-    if result != nil {
-        fmt.Println(result)
-    }
-}
 `;
   }
 }

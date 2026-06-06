@@ -15,6 +15,7 @@ model User {
   profilePic        String?
   chatSessions      ChatSession[]
   requestedProblems Problem[]     @relation("RequestedProblems")
+  problemGenerations ProblemGeneration[]
   submissions       Submission[]
 }
 
@@ -30,6 +31,7 @@ model Problem {
   requestedById String?
   slug          String       @unique
   requestedBy   User?        @relation("RequestedProblems", fields: [requestedById], references: [id])
+  generations   ProblemGeneration[]
   testCases     TestCase[]
   submissions   Submission[]
 }
@@ -95,6 +97,27 @@ enum Difficulty {
   EASY
   MEDIUM
   HARD
+}
+
+model ProblemGeneration {
+  id            String    @id @default(uuid())
+  status        GenerationStatus @default(PENDING)
+  difficulty    Difficulty
+  language      String
+  requestedById String
+  requestedBy   User @relation(fields: [requestedById], references: [id])
+  problemId     String?
+  problem       Problem? @relation(fields: [problemId], references: [id])
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum GenerationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 enum SubmissionStatus {
